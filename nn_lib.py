@@ -161,8 +161,8 @@ class LinearLayer(Layer):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        self._W = None
-        self._b = None
+        self._W = np.reshape(np.xavier_init((n_in * n_out)), (n_in, n_out))
+        self._b = np.reshape(np.random.randn((n_out)), (1, n_out))
 
         self._cache_current = None
         self._grad_W_current = None
@@ -188,6 +188,8 @@ class LinearLayer(Layer):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
+
+        return (np.matmul(x, self._W) + self._b)
 
         #######################################################################
         #                       ** END OF YOUR CODE **
