@@ -90,15 +90,30 @@ class SigmoidLayer(Layer):
     SigmoidLayer: Applies sigmoid function elementwise.
     """
 
-    def __init__(self):
+    def __init__(self, n_in, n_out):
+        self.n_in = n_in
+        self.n_out = n_out
+        self._W = np.reshape(xavier_init((self.n_in * self.n_out)), (self.n_in, self.n_out))
+        self._b = np.reshape(np.random.randn((self.n_out)), (1, self.n_out))
+
         self._cache_current = None
+        self._grad_W_current = None
+        self._grad_b_current = None
+        self.f_prime = 0
 
     def forward(self, x):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        pass
+        self.x = x
 
+        self.batch_size = self.x.shape[0]
+        self._cache_current = self.x, self._W, self._b
+
+        self.z = np.matmul(self.x, self._W) + self._b
+        self.z = 1/(1 + np.exp(-self.z))
+
+        return self.z
         #######################################################################
         #                       ** END OF YOUR CODE **
         #######################################################################
@@ -107,7 +122,17 @@ class SigmoidLayer(Layer):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        pass
+        self.x, self._W, self._b = self._cache_current
+
+        self._grad_W_current = np.matmul(self.x.T, grad_z)
+        self._grad_b_current = np.matmul(np.ones((self.batch_size, self.n_out)).T, grad_z)
+
+        self.f_prime = np.multiply(self.z, 1-self.z)
+
+        grad_loss_wrt_inputs = np.multiply(grad_z, self.f_prime)
+        self._cache_current = self.x, self._W, self._b, self._grad_W_current
+
+        return(grad_loss_wrt_inputs)
 
         #######################################################################
         #                       ** END OF YOUR CODE **
@@ -119,28 +144,58 @@ class ReluLayer(Layer):
     ReluLayer: Applies Relu function elementwise.
     """
 
-    def __init__(self):
+    def __init__(self, n_in, n_out):
+        self.n_in = n_in
+        self.n_out = n_out
+        self._W = np.reshape(xavier_init((self.n_in * self.n_out)), (self.n_in, self.n_out))
+        self._b = np.reshape(np.random.randn((self.n_out)), (1, self.n_out))
+
         self._cache_current = None
+        self._grad_W_current = None
+        self._grad_b_current = None
+        self.f_prime = 0
 
     def forward(self, x):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        pass
+        self.x = x
 
+        self.batch_size = self.x.shape[0]
+        self._cache_current = self.x, self._W, self._b
+
+        self.z = np.matmul(self.x, self._W) + self._b
+        ze = np.zeros_like(self.z)
+
+        self.z = np.maximum(ze, self.z)
         #######################################################################
         #                       ** END OF YOUR CODE **
         #######################################################################
+
+        return self.z
 
     def backward(self, grad_z):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        pass
 
+        self.x, self._W, self._b = self._cache_current
+
+        self._grad_W_current = np.matmul(self.x.T, grad_z)
+        self._grad_b_current = np.matmul(np.ones((self.batch_size, self.n_out)).T, grad_z)
+
+        self.f_prime = np.zeros_like(self.z)
+        self.f_prime = np.maximum(self.f_prime, self.z)
+
+        print(self.f_prime)
+
+        grad_loss_wrt_inputs = np.multiply(grad_z, self.f_prime)
+        self._cache_current = self.x, self._W, self._b, self._grad_W_current
         #######################################################################
         #                       ** END OF YOUR CODE **
         #######################################################################
+
+        return(grad_loss_wrt_inputs)
 
 
 class LinearLayer(Layer):
@@ -161,8 +216,8 @@ class LinearLayer(Layer):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        self._W = np.reshape(np.xavier_init((n_in * n_out)), (n_in, n_out))
-        self._b = np.reshape(np.random.randn((n_out)), (1, n_out))
+        self._W = np.reshape(xavier_init((self.n_in * self.n_out)), (self.n_in, self.n_out))
+        self._b = np.reshape(np.random.randn((self.n_out)), (1, self.n_out))
 
         self._cache_current = None
         self._grad_W_current = None
@@ -188,8 +243,10 @@ class LinearLayer(Layer):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-
-        return (np.matmul(x, self._W) + self._b)
+        self.x = x
+        self.batch_size = self.x.shape[0]
+        self._cache_current = self.x, self._W, self._b
+        return (np.matmul(self.x, self._W) + self._b)
 
         #######################################################################
         #                       ** END OF YOUR CODE **
@@ -213,9 +270,19 @@ class LinearLayer(Layer):
         #                       ** START OF YOUR CODE **
         #######################################################################
 
+        self.x, self._W, self._b = self._cache_current
+
+        self._grad_W_current = np.matmul(self.x.T, grad_z)
+        self._grad_b_current = np.matmul(np.ones((self.batch_size, self.n_out)).T, grad_z)
+
+        grad_loss_wrt_inputs = np.matmul(grad_z, self._W.T)
+
+        self._cache_current = self.x, self._W, self._b, self._grad_W_current
         #######################################################################
         #                       ** END OF YOUR CODE **
         #######################################################################
+
+        return(grad_loss_wrt_inputs)
 
     def update_params(self, learning_rate):
         """
@@ -228,11 +295,13 @@ class LinearLayer(Layer):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
+        self.x, self._W, self._b, self._grad_W_current = self._cache_current
+
+        self._W = self._W - learning_rate * self._grad_W_current
 
         #######################################################################
         #                       ** END OF YOUR CODE **
         #######################################################################
-
 
 class MultiLayerNetwork(object):
     """
@@ -299,6 +368,9 @@ class MultiLayerNetwork(object):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
+
+
+
 
         #######################################################################
         #                       ** END OF YOUR CODE **
