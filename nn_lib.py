@@ -243,10 +243,9 @@ class LinearLayer(Layer):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        self.x = x
-        self.batch_size = self.x.shape[0]
-        self._cache_current = self.x, self._W, self._b
-        return (np.matmul(self.x, self._W) + self._b)
+        self.batch_size = x.shape[0]
+        self._cache_current = x
+        return (np.matmul(x, self._W) + self._b)
 
         #######################################################################
         #                       ** END OF YOUR CODE **
@@ -270,14 +269,14 @@ class LinearLayer(Layer):
         #                       ** START OF YOUR CODE **
         #######################################################################
 
-        self.x, self._W, self._b = self._cache_current
+        x = self._cache_current
 
-        self._grad_W_current = np.matmul(self.x.T, grad_z)
+        self._grad_W_current = np.matmul(x.T, grad_z)
         self._grad_b_current = np.matmul(np.ones((self.batch_size, self.n_out)).T, grad_z)
 
         grad_loss_wrt_inputs = np.matmul(grad_z, self._W.T)
 
-        self._cache_current = self.x, self._W, self._b, self._grad_W_current
+        self._cache_current = x
         #######################################################################
         #                       ** END OF YOUR CODE **
         #######################################################################
@@ -326,7 +325,17 @@ class MultiLayerNetwork(object):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        self._layers = None
+        self.layers = []
+        for i in range(len(self.neurons)):
+            if self.activations[i] == "relu":
+                self.activations[i] = ReluLayer
+            if self.activations[i] == "linear":
+                self.activations[i] = LinearLayer
+            if self.activations[i] == "sigmoid":
+                self.activations[i] = SigmoidLayer
+
+            self._layers.append([self.input_dim, self.neurons[i], self.activations[i]])
+            self.input_dim = self.neurons[i]
         #######################################################################
         #                       ** END OF YOUR CODE **
         #######################################################################
@@ -345,6 +354,10 @@ class MultiLayerNetwork(object):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
+
+        for i in range(self.layers):
+            self.multilayer[i] = self.layers[i][2](self.layers[i][0], self.layers[i][1])
+            x = self.multilayer[i].forward(x)
 
         #######################################################################
         #                       ** END OF YOUR CODE **
@@ -369,7 +382,8 @@ class MultiLayerNetwork(object):
         #                       ** START OF YOUR CODE **
         #######################################################################
 
-
+        for i in range(len(self.multilayer)):
+            self.multilayer[i].backward(grad_z)
 
 
         #######################################################################
