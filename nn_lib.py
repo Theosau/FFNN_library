@@ -90,15 +90,8 @@ class SigmoidLayer(Layer):
     SigmoidLayer: Applies sigmoid function elementwise.
     """
 
-    def __init__(self, n_in, n_out):
-        self.n_in = n_in
-        self.n_out = n_out
-        self._W = np.reshape(xavier_init((self.n_in * self.n_out)), (self.n_in, self.n_out))
-        self._b = np.reshape(np.random.randn((self.n_out)), (1, self.n_out))
-
+    def __init__(self):
         self._cache_current = None
-        self._grad_W_current = None
-        self._grad_b_current = None
         self.f_prime = 0
 
     def forward(self, x):
@@ -107,11 +100,10 @@ class SigmoidLayer(Layer):
         #######################################################################
         self.x = x
 
-        self.batch_size = self.x.shape[0]
-        self._cache_current = self.x, self._W, self._b
-
         self.z = np.matmul(self.x, self._W) + self._b
         self.z = 1/(1 + np.exp(-self.z))
+
+        self._cache_current = z
 
         return self.z
         #######################################################################
@@ -122,15 +114,8 @@ class SigmoidLayer(Layer):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        self.x, self._W, self._b = self._cache_current
-
-        self._grad_W_current = np.matmul(self.x.T, grad_z)
-        self._grad_b_current = np.matmul(np.ones((self.batch_size, self.n_out)).T, grad_z)
-
         self.f_prime = np.multiply(self.z, 1-self.z)
-
         grad_loss_wrt_inputs = np.multiply(grad_z, self.f_prime)
-        self._cache_current = self.x, self._W, self._b, self._grad_W_current
 
         return(grad_loss_wrt_inputs)
 
@@ -145,14 +130,7 @@ class ReluLayer(Layer):
     """
 
     def __init__(self, n_in, n_out):
-        self.n_in = n_in
-        self.n_out = n_out
-        self._W = np.reshape(xavier_init((self.n_in * self.n_out)), (self.n_in, self.n_out))
-        self._b = np.reshape(np.random.randn((self.n_out)), (1, self.n_out))
-
         self._cache_current = None
-        self._grad_W_current = None
-        self._grad_b_current = None
         self.f_prime = 0
 
     def forward(self, x):
@@ -160,14 +138,11 @@ class ReluLayer(Layer):
         #                       ** START OF YOUR CODE **
         #######################################################################
         self.x = x
-
-        self.batch_size = self.x.shape[0]
-        self._cache_current = self.x, self._W, self._b
-
         self.z = np.matmul(self.x, self._W) + self._b
         ze = np.zeros_like(self.z)
 
         self.z = np.maximum(ze, self.z)
+        self._cache_current = self.z
         #######################################################################
         #                       ** END OF YOUR CODE **
         #######################################################################
@@ -179,18 +154,11 @@ class ReluLayer(Layer):
         #                       ** START OF YOUR CODE **
         #######################################################################
 
-        self.x, self._W, self._b = self._cache_current
-
-        self._grad_W_current = np.matmul(self.x.T, grad_z)
-        self._grad_b_current = np.matmul(np.ones((self.batch_size, self.n_out)).T, grad_z)
 
         self.f_prime = np.zeros_like(self.z)
         self.f_prime = np.maximum(self.f_prime, self.z)
 
-        print(self.f_prime)
-
         grad_loss_wrt_inputs = np.multiply(grad_z, self.f_prime)
-        self._cache_current = self.x, self._W, self._b, self._grad_W_current
         #######################################################################
         #                       ** END OF YOUR CODE **
         #######################################################################
@@ -294,7 +262,6 @@ class LinearLayer(Layer):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        self.x, self._W, self._b, self._grad_W_current = self._cache_current
 
         self._W = self._W - learning_rate * self._grad_W_current
 
