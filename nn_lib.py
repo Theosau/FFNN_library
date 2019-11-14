@@ -98,12 +98,10 @@ class SigmoidLayer(Layer):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        self.x = x
-
-        self.z = np.matmul(self.x, self._W) + self._b
+        self.z = x
         self.z = 1/(1 + np.exp(-self.z))
 
-        self._cache_current = z
+        self._cache_current = self.z
 
         return self.z
         #######################################################################
@@ -129,7 +127,7 @@ class ReluLayer(Layer):
     ReluLayer: Applies Relu function elementwise.
     """
 
-    def __init__(self, n_in, n_out):
+    def __init__(self):
         self._cache_current = None
         self.f_prime = 0
 
@@ -137,8 +135,7 @@ class ReluLayer(Layer):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        self.x = x
-        self.z = np.matmul(self.x, self._W) + self._b
+        self.z = x
         ze = np.zeros_like(self.z)
 
         self.z = np.maximum(ze, self.z)
@@ -153,7 +150,6 @@ class ReluLayer(Layer):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-
 
         self.f_prime = np.zeros_like(self.z)
         self.f_prime = np.maximum(self.f_prime, self.z)
@@ -244,7 +240,6 @@ class LinearLayer(Layer):
 
         grad_loss_wrt_inputs = np.matmul(grad_z, self._W.T)
 
-        self._cache_current = x
         #######################################################################
         #                       ** END OF YOUR CODE **
         #######################################################################
