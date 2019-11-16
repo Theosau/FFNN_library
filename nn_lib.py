@@ -150,7 +150,7 @@ class ReluLayer(Layer):
         self.f_prime[self.f_prime<0] = 0
         self.f_prime[self.f_prime>0] = 1
 
-        grad_loss_wrt_inputs = np.multiply(grad_z, self.f_prime)
+        grad_loss_wrt_inputs = np.multiply(grad_z, self.f_prime) # GRAD_Z for linear unit
         #######################################################################
         #                       ** END OF YOUR CODE **
         #######################################################################
@@ -205,6 +205,10 @@ class LinearLayer(Layer):
         #######################################################################
         self.batch_size = x.shape[0]
         self._cache_current = x
+
+        # STORE CACHE FOR BACKWARD PROP
+        #temp_Z = (np.matmul(x, self._W) + self._b)
+        #self._cache_current  = [temp_Z, self._W]
         return (np.matmul(x, self._W) + self._b)
 
         #######################################################################
@@ -281,13 +285,17 @@ class MultiLayerNetwork(object):
         self.neurons = neurons # L
         self.activations = activations # L
 
+        self._layers = [None]*len(self.neurons)
+        self._w_gradients = [None]*len(self.neurons)
+        self._b_gradients = [None]*len(self.neurons)
+        self.feature_list = list(self.input_dim) + list(self.neurons)
+
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        self.feature_list = list(self.input_dim) + list(self.neurons)
-        self._layers = [None]*len(self.neurons)
 
-        for index, feature in enumerate(self.feature_list):
+        for index, feature in enumerate(self.neurons):
+            print(index, feature)
             self._layers[index] = [LinearLayer(self.feature_list[index],self.feature_list[index+1]),
                                     self.find_activation_func(index)]
 
@@ -322,8 +330,9 @@ class MultiLayerNetwork(object):
         #######################################################################
 
         for i in range(len(self.neurons)):
-            x = self._layers[i,1].forward(self._layers[i,0].forward(x))
+            x = self._layers[i][1].forward(self._layers[i][0].forward(x))
         return x
+
         #######################################################################
         #                       ** END OF YOUR CODE **
         #######################################################################
@@ -346,13 +355,15 @@ class MultiLayerNetwork(object):
             {np.ndarray} -- Array containing gradient with repect to layer
                 input, of shape (batch_size, input_dim).
         """
+
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
 
-        for i in range(len(self.neurons),-1,-1):
-            x = self._layers[i,1].forward(self._layers[i,0].forward(x))
-        return x
+        for layer_n in range(len(self.neurons)-1,-1,-1):
+            print(layer_n)
+            grad_z = self._layers[layer_n][0].backward(self._layers[layer_n][1].backward(grad_z))
+        return grad_z #RETURNS GRADIENT OF FUNC WRT TO INPUTS
 
         #######################################################################
         #                       ** END OF YOUR CODE **
@@ -366,10 +377,13 @@ class MultiLayerNetwork(object):
         Arguments:
             learning_rate {float} -- Learning rate of update step.
         """
+
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-
+        for layer_n in range(len(self.neurons)-1,-1,-1):
+            self._layers[layer_n][0].update_params(learning_rate)
+        return 0 #RETURNS GRADIENT OF FUNC WRT TO INPUTS
         #######################################################################
         #                       ** END OF YOUR CODE **
         #######################################################################
@@ -405,6 +419,7 @@ class Trainer(object):
         learning_rate,
         loss_fun,
         shuffle_flag,
+        loss_type
     ):
         """Constructor.
 
@@ -428,7 +443,7 @@ class Trainer(object):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        self._loss_layer = None
+        self._loss_layer = loss_type
         #######################################################################
         #                       ** END OF YOUR CODE **
         #######################################################################
@@ -449,7 +464,8 @@ class Trainer(object):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-
+        stacked_data = np.random.shuffle(np.hstack((input_dataset,target_dataset)))
+        return stacked_data[:,:-target_dataset.shape[1]], stacked_data[:,-target_dataset.shape[1]]
         #######################################################################
         #                       ** END OF YOUR CODE **
         #######################################################################
@@ -477,7 +493,14 @@ class Trainer(object):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
+        if self.shuffle_flag:
+            input_dataset,target_dataset = self.shuffle(input_dataset,target_dataset)
 
+        data = np.hstack((input_dataset,target_dataset))
+        n_batches = np.floor(data.shape[0]/self.batch_size).astype(int)
+        batch_list = np.vsplit(data[:int(n_batches*self.batch_size)],n_batches)
+        batch_list.append(data[int(n_batches*batch_size):])
+        
         #######################################################################
         #                       ** END OF YOUR CODE **
         #######################################################################
