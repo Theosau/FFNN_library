@@ -295,7 +295,6 @@ class MultiLayerNetwork(object):
         #######################################################################
 
         for index, feature in enumerate(self.neurons):
-            print(index, feature)
             self._layers[index] = [LinearLayer(self.feature_list[index],self.feature_list[index+1]),
                                     self.find_activation_func(index)]
 
@@ -361,7 +360,6 @@ class MultiLayerNetwork(object):
         #######################################################################
 
         for layer_n in range(len(self.neurons)-1,-1,-1):
-            print(layer_n)
             grad_z = self._layers[layer_n][0].backward(self._layers[layer_n][1].backward(grad_z))
         return grad_z #RETURNS GRADIENT OF FUNC WRT TO INPUTS
 
@@ -418,8 +416,7 @@ class Trainer(object):
         nb_epoch,
         learning_rate,
         loss_fun,
-        shuffle_flag,
-        loss_type
+        shuffle_flag
     ):
         """Constructor.
 
@@ -433,7 +430,7 @@ class Trainer(object):
             shuffle_flag {bool} -- If True, training data is shuffled before
                 training.
         """
-        self.network = network
+        self.multilayer_network = network
         self.batch_size = batch_size
         self.nb_epoch = nb_epoch
         self.learning_rate = learning_rate
@@ -443,7 +440,14 @@ class Trainer(object):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        self._loss_layer = loss_type
+
+        if self.loss_fun is 'mse':
+            self._loss_layer = MSELossLayer()
+        elif self.loss_fun is 'softmax_cross_entropy':
+            self._loss_layer = CrossEntropyLossLayer()
+        else:
+            raise Exception('Wrong Loss, chose between: mse, softmax_cross_entropy')
+
         #######################################################################
         #                       ** END OF YOUR CODE **
         #######################################################################
@@ -464,8 +468,9 @@ class Trainer(object):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        stacked_data = np.random.shuffle(np.hstack((input_dataset,target_dataset)))
-        return stacked_data[:,:-target_dataset.shape[1]], stacked_data[:,-target_dataset.shape[1]]
+        stacked_data = np.hstack((input_dataset,target_dataset))
+        np.random.shuffle(stacked_data)
+        return stacked_data[:,:-target_dataset.shape[1]], stacked_data[:,-target_dataset.shape[1]:]
         #######################################################################
         #                       ** END OF YOUR CODE **
         #######################################################################
@@ -493,14 +498,24 @@ class Trainer(object):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        if self.shuffle_flag:
-            input_dataset,target_dataset = self.shuffle(input_dataset,target_dataset)
+        n_batches = np.floor(input_dataset.shape[0]/self.batch_size).astype(int)
 
-        data = np.hstack((input_dataset,target_dataset))
-        n_batches = np.floor(data.shape[0]/self.batch_size).astype(int)
-        batch_list = np.vsplit(data[:int(n_batches*self.batch_size)],n_batches)
-        batch_list.append(data[int(n_batches*batch_size):])
-        
+        for epoch in range(self.nb_epoch):
+
+            if self.shuffle_flag:
+                input_dataset,target_dataset = self.shuffle(input_dataset,target_dataset)
+
+            data = np.hstack((input_dataset,target_dataset))
+            batch_list = np.vsplit(data[:int(n_batches*self.batch_size)],n_batches)
+            if int(n_batches*self.batch_size) != data.shape[0]:
+                batch_list.append(data[int(n_batches*self.batch_size):])
+
+            for batch in batch_list:
+                print(batch.shape)
+                loss = self.eval_loss(batch[:,:-target_dataset.shape[1]],batch[:,-target_dataset.shape[1]:])
+                self.multilayer_network.backward(self.grad_z)
+                self.multilayer_network.update_params(self.learning_rate)
+                print(loss)
         #######################################################################
         #                       ** END OF YOUR CODE **
         #######################################################################
@@ -518,7 +533,12 @@ class Trainer(object):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
+        prediction = self.multilayer_network.forward(input_dataset)
 
+        loss = self._loss_layer.forward(prediction, target_dataset)
+        self.grad_z = self._loss_layer.backward()
+
+        return loss
         #######################################################################
         #                       ** END OF YOUR CODE **
         #######################################################################
@@ -537,12 +557,13 @@ class Preprocessor(object):
 
         Arguments:
             - data {np.ndarray} dataset used to determined the parameters for
-            the normalization.
+            the normalization. DATA HAS FEATURES - X
         """
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-
+        self.max_data = np.max(data, axis = 0)
+        self.min_data = np.min(data, axis = 0)
         #######################################################################
         #                       ** END OF YOUR CODE **
         #######################################################################
@@ -560,12 +581,12 @@ class Preprocessor(object):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-
+        return (data - self.min_data)/(self.max_data - self.min_data)
         #######################################################################
         #                       ** END OF YOUR CODE **
         #######################################################################
 
-    def revert(self, data):
+    def revert(self, normalised_data):
         """
         Revert the pre-processing operations to retreive the original dataset.
 
@@ -578,7 +599,7 @@ class Preprocessor(object):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-
+        return self.min_data + normalised_data*(self.max_data - self.min_data)
         #######################################################################
         #                       ** END OF YOUR CODE **
         #######################################################################
@@ -613,7 +634,7 @@ def example_main():
         batch_size=8,
         nb_epoch=1000,
         learning_rate=0.01,
-        loss_fun="cross_entropy",
+        loss_fun="softmax_cross_entropy",
         shuffle_flag=True,
     )
 
