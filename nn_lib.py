@@ -499,7 +499,7 @@ class Trainer(object):
         #                       ** START OF YOUR CODE **
         #######################################################################
         n_batches = np.floor(input_dataset.shape[0]/self.batch_size).astype(int)
-
+        loss_arr = []
         for epoch in range(self.nb_epoch):
 
             if self.shuffle_flag:
@@ -511,11 +511,11 @@ class Trainer(object):
                 batch_list.append(data[int(n_batches*self.batch_size):])
 
             for batch in batch_list:
-                print(batch.shape)
                 loss = self.eval_loss(batch[:,:-target_dataset.shape[1]],batch[:,-target_dataset.shape[1]:])
                 self.multilayer_network.backward(self.grad_z)
                 self.multilayer_network.update_params(self.learning_rate)
-                print(loss)
+                loss_arr.append(loss)
+        return loss_arr
         #######################################################################
         #                       ** END OF YOUR CODE **
         #######################################################################
