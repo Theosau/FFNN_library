@@ -288,7 +288,7 @@ class MultiLayerNetwork(object):
         self._layers = [None]*len(self.neurons)
         self._w_gradients = [None]*len(self.neurons)
         self._b_gradients = [None]*len(self.neurons)
-        self.feature_list = list(self.input_dim) + list(self.neurons)
+        self.feature_list = [self.input_dim] + self.neurons
 
         #######################################################################
         #                       ** START OF YOUR CODE **
