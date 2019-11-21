@@ -9,6 +9,7 @@ import keras
 from keras.models import Sequential
 from keras.layers import Dense
 
+import imblearn
 
 class ClaimClassifier:
     def __init__(self,):
@@ -80,7 +81,6 @@ class ClaimClassifier:
               keras.metrics.AUC(name='auc'),
         ]
 
-        epochs = 100
         model = Sequential()
         # Input layer
         model.add(Dense(12,input_dim=8, activation= 'relu'))
