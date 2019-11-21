@@ -307,7 +307,7 @@ class MultiLayerNetwork(object):
             activation_class = ReluLayer()
         elif self.activations[index] == "linear":
             activation_class = LinearLayer()
-        elif self.activations[index] == "sigmoid":
+        elif self.activations[index] == "identity":
             activation_class = SigmoidLayer()
         else:
             raise AssertionError("Wrong activation function")
