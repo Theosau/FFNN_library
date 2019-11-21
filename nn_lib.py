@@ -157,6 +157,38 @@ class ReluLayer(Layer):
 
         return(grad_loss_wrt_inputs)
 
+class IdentityLayer(Layer):
+    """
+    ReluLayer: Applies Relu function elementwise.
+    """
+
+    def __init__(self):
+        self._cache_current = None
+
+    def forward(self, x):
+
+        #######################################################################
+        #                       ** START OF YOUR CODE **
+        #######################################################################
+        self._cache_current = x
+        #######################################################################
+        #                       ** END OF YOUR CODE **
+        #######################################################################
+
+        return self._cache_current
+
+    def backward(self, grad_z):
+        #######################################################################
+        #                       ** START OF YOUR CODE **
+        #######################################################################
+        self.f_prime = np.ones_like(self._cache_current)
+        grad_loss_wrt_inputs = np.multiply(grad_z, self.f_prime) # GRAD_Z for linear unit
+        #######################################################################
+        #                       ** END OF YOUR CODE **
+        #######################################################################
+
+        return(grad_loss_wrt_inputs)
+
 
 class LinearLayer(Layer):
     """
@@ -308,7 +340,7 @@ class MultiLayerNetwork(object):
         if self.activations[index] == "relu":
             activation_class = ReluLayer()
         elif self.activations[index] == "identity":
-            activation_class = LinearLayer()
+            activation_class = IdentityLayer()
         elif self.activations[index] == "sigmoid":
             activation_class = SigmoidLayer()
         else:
