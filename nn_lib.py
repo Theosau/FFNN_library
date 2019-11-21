@@ -641,8 +641,8 @@ class Preprocessor(object):
 
 def example_main():
     input_dim = 4
-    neurons = [16, 3]
-    activations = ["relu", "identity"]
+    neurons = [2,3,3]
+    activations = ["identity",'identity','sigmoid']
     net = MultiLayerNetwork(input_dim, neurons, activations)
 
     dat = np.loadtxt("iris.dat")
