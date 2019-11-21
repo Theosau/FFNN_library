@@ -1,6 +1,6 @@
 import numpy as np
 import pickle
-
+# GO ON
 def xavier_init(size, gain=1.0):
     """
     Xavier initialization of network weights.
