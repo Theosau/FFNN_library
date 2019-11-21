@@ -40,7 +40,7 @@ class PricingModel():
         # If you wish to use the classifier in part 2, you will need
         # to implement a predict_proba for it before use
         # =============================================================
-        self.base_classifier =  # ADD YOUR BASE CLASSIFIER HERE
+        self.base_classifier = None # ADD YOUR BASE CLASSIFIER HERE
 
 
     # YOU ARE ALLOWED TO ADD MORE ARGUMENTS AS NECESSARY TO THE _preprocessor METHOD
