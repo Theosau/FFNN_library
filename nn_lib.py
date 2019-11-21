@@ -303,10 +303,12 @@ class MultiLayerNetwork(object):
         #######################################################################
 
     def find_activation_func(self,index):
+        print(index)
+        print(self.activations[index], self.activations)
         if self.activations[index] == "relu":
             activation_class = ReluLayer()
-        elif self.activations[index] == "linear":
-            activation_class = LinearLayer()
+        # elif self.activations[index] == "linear":
+        #     activation_class = LinearLayer()
         elif self.activations[index] == "identity":
             activation_class = SigmoidLayer()
         else:
