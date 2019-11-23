@@ -110,8 +110,8 @@ class SigmoidLayer(Layer):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        self.f_prime = np.multiply(self._cache_current, np.ones_like(self._cache_current)-self._cache_current)
-        grad_loss_wrt_inputs = np.multiply(grad_z, self.f_prime)
+        self.f_prime = self._cache_current * (1 - self._cache_current)
+        grad_loss_wrt_inputs = grad_z * self.f_prime
 
         return(grad_loss_wrt_inputs)
 
@@ -149,7 +149,7 @@ class ReluLayer(Layer):
         self.f_prime[self.f_prime<0] = 0
         self.f_prime[self.f_prime>0] = 1
 
-        grad_loss_wrt_inputs = np.multiply(grad_z, self.f_prime)
+        grad_loss_wrt_inputs = grad_z * self.f_prime
         #######################################################################
         #                       ** END OF YOUR CODE **
         #######################################################################
@@ -205,9 +205,6 @@ class LinearLayer(Layer):
         self.batch_size = x.shape[0]
         self._cache_current = x
 
-        # STORE CACHE FOR BACKWARD PROP
-        #temp_Z = (np.matmul(x, self._W) + self._b)
-        #self._cache_current  = [temp_Z, self._W]
         return (np.matmul(x, self._W) + self._b)
 
         #######################################################################
@@ -296,9 +293,6 @@ class MultiLayerNetwork(object):
 
         for index, feature in enumerate(self.neurons):
 
-            print(index)
-            print(self.activations[index], self.activations)
-
             self.index_linear_layer.append(len(self._layers))
             self._layers.append(LinearLayer(self.feature_list[index],self.feature_list[index+1]))
 
@@ -310,8 +304,6 @@ class MultiLayerNetwork(object):
                 continue
             else:
                 raise AssertionError("Wrong activation function")
-            #print(self.index_linear_layer, self._layers)
-            #print(self.feature_list[index],self.feature_list[index+1])
         #######################################################################
         #                       ** END OF YOUR CODE **
         #######################################################################
@@ -384,7 +376,7 @@ class MultiLayerNetwork(object):
         #                       ** START OF YOUR CODE **
         #######################################################################
         for layer_n in range(len(self._layers)-1,-1,-1):
-            if self._layers[layer_n] in self.index_linear_layer:
+            if layer_n in self.index_linear_layer:
                 self._layers[layer_n].update_params(learning_rate)
             else:
                 continue
@@ -477,7 +469,6 @@ class Trainer(object):
         #######################################################################
         stacked_data = np.hstack((input_dataset,target_dataset))
         np.random.shuffle(stacked_data)
-        print('shuffled')
         return (stacked_data[:,:-target_dataset.shape[1]], stacked_data[:,-target_dataset.shape[1]:])
         #######################################################################
         #                       ** END OF YOUR CODE **
