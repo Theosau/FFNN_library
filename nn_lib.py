@@ -327,8 +327,8 @@ class MultiLayerNetwork(object):
         #######################################################################
 
         for index, feature in enumerate(self.neurons):
-            self._layers[index] = [LinearLayer(self.feature_list[index],self.feature_list[index+1]),
-                                    self.find_activation_func(index)]
+            self._layers[index] = (LinearLayer(self.feature_list[index],self.feature_list[index+1]),
+                                    self.find_activation_func(index))
 
         #######################################################################
         #                       ** END OF YOUR CODE **
