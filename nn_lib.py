@@ -296,6 +296,9 @@ class MultiLayerNetwork(object):
 
         for index, feature in enumerate(self.neurons):
 
+            print(index)
+            print(self.activations[index], self.activations)
+
             self.index_linear_layer.append(len(self._layers))
             self._layers.append(LinearLayer(self.feature_list[index],self.feature_list[index+1]))
 
@@ -504,6 +507,7 @@ class Trainer(object):
         #######################################################################
         n_batches = np.floor(input_dataset.shape[0]/self.batch_size).astype(int)
         loss_arr = []
+        print('training')
         for epoch in range(self.nb_epoch):
 
             if self.shuffle_flag:
@@ -519,6 +523,7 @@ class Trainer(object):
                 self.multilayer_network.backward(self.grad_z)
                 self.multilayer_network.update_params(self.learning_rate)
                 loss_arr.append(loss)
+        print('training done')
         return loss_arr
         #######################################################################
         #                       ** END OF YOUR CODE **
