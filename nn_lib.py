@@ -454,7 +454,7 @@ class Trainer(object):
             self._loss_layer = CrossEntropyLossLayer()
         else:
             raise Exception('Wrong Loss, chose between: mse, cross_entropy')
-
+        print('chose the loss function')
         #######################################################################
         #                       ** END OF YOUR CODE **
         #######################################################################
@@ -477,7 +477,8 @@ class Trainer(object):
         #######################################################################
         stacked_data = np.hstack((input_dataset,target_dataset))
         np.random.shuffle(stacked_data)
-        return stacked_data[:,:-target_dataset.shape[1]], stacked_data[:,-target_dataset.shape[1]:]
+        print('shuffled')
+        return (stacked_data[:,:-target_dataset.shape[1]], stacked_data[:,-target_dataset.shape[1]:])
         #######################################################################
         #                       ** END OF YOUR CODE **
         #######################################################################
@@ -542,11 +543,13 @@ class Trainer(object):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
+        print('evaluating loss')
         prediction = self.multilayer_network.forward(input_dataset)
 
         loss = self._loss_layer.forward(prediction, target_dataset)
         self.grad_z = self._loss_layer.backward()
 
+        print('evaluated loss')
         return loss
         #######################################################################
         #                       ** END OF YOUR CODE **
