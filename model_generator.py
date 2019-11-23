@@ -47,6 +47,7 @@ def metric_test(y_pred, y_true):
     return a
 
     #return y_true.sum()- y_pred.sum()
+    
 
 def model_v0_trial(num_inputs, num_classes):
     #create model
@@ -75,6 +76,15 @@ def train_model(X_train, y_train, X_test, y_test, model, epochs, batch_size, fol
     print("Baseline error : %.2f%%" %(100-scores[1]*100))
     return
 
+def train_model_batch(training, validation, model, epochs, folder):
+    tbCallback = TensorBoard(log_dir="logs/"+ folder)
+    model.fit_generator(generator=training, validation_data = validation, epochs = epochs, verbose = 2, 
+              callbacks = [tbCallback]) #switch epochs to 40
+    # Final evaluation of the model
+    scores = model.evaluate(X_test, y_test, verbose = 0)
+    print("Baseline error : %.2f%%" %(100-scores[1]*100))
+    return
+
 def train_predictions(model, file):
     # Predict 
     predictions = model.predict_classes(file)
@@ -90,91 +100,6 @@ def predict(num, predictions, line):
     else :
         return False
 
-
-"""
-
-# define baseline model
-def baseline_model(num_pixels, num_classes):
-    #create model
-    model = Sequential()
-    model.add(Dense(num_pixels, input_dim = num_pixels, kernel_initializer = 'normal', activation = 'relu'))
-    model.add(Dense(num_classes, kernel_initializer = 'normal', activation = 'softmax'))
-    #compile model
-    model.compile(loss = 'categorical_crossentropy', optimizer = 'adam', metrics = ['accuracy'])
-    return model
-
-def Supervised_model_SGD(_input_shape_, _output_shape_):
-    import keras
-    model = Sequential()
-
-    model.add(Dense(units = _input_shape_, input_dim = _input_shape_, kernel_initializer = 'uniform', 
-        activation = 'relu'))
-    model.add(Dense(units = 1024, kernel_initializer = 'uniform',
-        activation = 'relu'))
-    model.add(Dense(units = _output_shape_, kernel_initializer='uniform',
-        activation = 'softmax'))
-
-    model.compile(loss = 'categorical_crossentropy', optimizer = keras.optimizers.SGD(), metrics = ['accuracy'])#keras.losses.squared_hinge)
-    return model
-
-def Supervised_model_adam(_input_shape_, _output_shape_):
-    import keras
-    model = Sequential()
-
-    model.add(Dense(units = _input_shape_, input_dim = _input_shape_, kernel_initializer = 'uniform', 
-        activation = 'relu'))
-    model.add(Dense(units = 1024, kernel_initializer = 'uniform',
-        activation = 'relu'))
-    model.add(Dense(units = _output_shape_, kernel_initializer='uniform',
-        activation = 'softmax'))
-
-    model.compile(loss = 'categorical_crossentropy', optimizer = 'adam', metrics = ['accuracy'])#keras.losses.squared_hinge)
-    return model
-
-def Supervised_model_SGD_sigmoid(_input_shape_, _output_shape_):
-    import keras
-    model = Sequential()
-
-    model.add(Dense(units = _input_shape_, input_dim = _input_shape_, kernel_initializer = 'uniform', 
-        activation = 'relu'))
-    model.add(Dense(units = 1024, kernel_initializer = 'uniform',
-        activation = 'relu'))
-    model.add(Dense(units = _output_shape_, kernel_initializer='uniform',
-        activation = 'sigmoid'))
-
-    model.compile(loss = 'categorical_crossentropy', optimizer = keras.optimizers.SGD(), metrics = ['accuracy'])#keras.losses.squared_hinge)
-    return model
-
-def RNN(_input_shape_, _output_shape_):
-    #import keras
-    from keras.layers import LSTM
-    from keras.layers import Dropout
-
-    model = Sequential()
-
-    model.add(LSTM(units = _input_shape_, return_sequences = True, input_shape = (_input_shape_,1) ))
-    model.add(Dropout(0.2))
-    print("Input layer : Done")
-
-    model.add(LSTM(units=256, return_sequences = True))
-    model.add(Dropout(0.2))
-    print("First layer : Done")
-    
-    model.add(LSTM(units = 512, return_sequences = True))
-    model.add(Dropout(0.2))
-    print("Second layer : Done")
-
-    model.add(LSTM(units = 1024, return_sequences = True))
-    model.add(Dropout(0.2))
-    print("Third layer : Done")
-
-    model.add(Dense(units = _output_shape_))
-    print("Output layer : Done\n\nCompiling")
-
-    model.compile(optimizer = keras.optimizers.SGD(), loss = 'categorical_crossentropy', metrics = ['accuracy'])
-
-    return model
-"""
 
 def save_model(model, model_name):
     model_json = model.to_json()
@@ -197,32 +122,3 @@ def load_model(model_name):
     loaded_model.compile(loss = 'categorical_crossentropy', optimizer = 'adam', metrics = ['accuracy'])
     print("Model loaded " + model_name)
     return loaded_model
-
-
-
-
-
-# def predict(num, predictions, X_test_im):
-#     # test it out
-#     plt.imshow(X_test_im[num])
-#     plt.show();
-#     print("I predicted a %s" %(predictions[num]))
-#     return
-
-# def predict_multiple(number, predictions, X_test_im):
-#     nb_by_rows = 4
-#     if number%nb_by_rows ==0:
-#         nb_by_columns = number/nb_by_rows
-#     else : 
-#         nb_by_columns = number/nb_by_rows +1
-        
-#     space = number/10+0.25
-#     plt.subplots_adjust(hspace = space, wspace = space)
-#     for i in range(1, number):
-#         im_num = random.randint(1, X_test_im.shape[0])
-#         #plt.subplot(330 + (i+1))
-#         plt.subplot(nb_by_rows,nb_by_columns,i)
-#         plt.imshow(X_test_im[im_num])
-#         plt.title("I predicted a %s" %(predictions[im_num]))
-#     return
-        
