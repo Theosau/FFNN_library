@@ -415,7 +415,7 @@ class MultiLayerNetwork(object):
         #######################################################################
         for layer_n in range(len(self.neurons)-1,-1,-1):
             self._layers[layer_n][0].update_params(learning_rate)
-        return 0 #RETURNS GRADIENT OF FUNC WRT TO INPUTS
+
         #######################################################################
         #                       ** END OF YOUR CODE **
         #######################################################################
@@ -477,10 +477,10 @@ class Trainer(object):
 
         if self.loss_fun is 'mse':
             self._loss_layer = MSELossLayer()
-        elif self.loss_fun is 'softmax_cross_entropy':
+        elif self.loss_fun is 'cross_entropy':
             self._loss_layer = CrossEntropyLossLayer()
         else:
-            raise Exception('Wrong Loss, chose between: mse, softmax_cross_entropy')
+            raise Exception('Wrong Loss, chose between: mse, cross_entropy')
 
         #######################################################################
         #                       ** END OF YOUR CODE **
@@ -668,7 +668,7 @@ def example_main():
         batch_size=8,
         nb_epoch=1000,
         learning_rate=0.01,
-        loss_fun="softmax_cross_entropy",
+        loss_fun="cross_entropy",
         shuffle_flag=True,
     )
 
