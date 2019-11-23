@@ -473,7 +473,15 @@ class Trainer(object):
         #print(target_dataset.shape, input_dataset.shape)
         stacked_data = np.hstack((input_dataset,target_dataset))
         np.random.shuffle(stacked_data)
-        return (stacked_data[:,:-target_dataset.shape[1]], stacked_data[:,-target_dataset.shape[1]:])
+
+        if input_dataset.shape == (input_dataset.shape[0],):
+            shuffled_inputs = stacked_data[0]
+            shuffled_targets = stacked_data[1]
+        else:
+            shuffled_inputs = stacked_data[:,:-target_dataset.shape[1]]
+            shuffled_targets = stacked_data[:,-target_dataset.shape[1]:]
+
+        return (shuffled_inputs, shuffled_targets)
         #######################################################################
         #                       ** END OF YOUR CODE **
         #######################################################################
