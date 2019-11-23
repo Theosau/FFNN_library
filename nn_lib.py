@@ -156,38 +156,6 @@ class ReluLayer(Layer):
 
         return(grad_loss_wrt_inputs)
 
-class IdentityLayer(Layer):
-    """
-    ReluLayer: Applies Relu function elementwise.
-    """
-
-    def __init__(self):
-        self._cache_current = None
-
-    def forward(self, x):
-
-        #######################################################################
-        #                       ** START OF YOUR CODE **
-        #######################################################################
-        self._cache_current = x
-        #######################################################################
-        #                       ** END OF YOUR CODE **
-        #######################################################################
-
-        return self._cache_current
-
-    def backward(self, grad_z):
-        #######################################################################
-        #                       ** START OF YOUR CODE **
-        #######################################################################
-        self.f_prime = np.ones_like(self._cache_current)
-        grad_loss_wrt_inputs = np.multiply(grad_z, self.f_prime) # GRAD_Z for linear unit
-        #######################################################################
-        #                       ** END OF YOUR CODE **
-        #######################################################################
-
-        return(grad_loss_wrt_inputs)
-
 
 class LinearLayer(Layer):
     """
@@ -316,7 +284,8 @@ class MultiLayerNetwork(object):
         self.neurons = neurons # L
         self.activations = activations # L
 
-        self._layers = [None]*len(self.neurons)
+        self._layers = []
+        self.index_linear_layer = []
         self._w_gradients = [None]*len(self.neurons)
         self._b_gradients = [None]*len(self.neurons)
         self.feature_list = [self.input_dim] + self.neurons
@@ -326,25 +295,24 @@ class MultiLayerNetwork(object):
         #######################################################################
 
         for index, feature in enumerate(self.neurons):
-            self._layers[index] = (LinearLayer(self.feature_list[index],self.feature_list[index+1]),
-                                    self.find_activation_func(index))
 
+            self.index_linear_layer.append(len(self._layers))
+            self._layers.append(LinearLayer(self.feature_list[index],self.feature_list[index+1]))
+
+            if self.activations[index] == "relu":
+                self._layers.append(ReluLayer())
+            elif self.activations[index] == "sigmoid":
+                self._layers.append(SigmoidLayer())
+            elif self.activations[index] == "identity":
+                continue
+            else:
+                raise AssertionError("Wrong activation function")
+            #print(self.index_linear_layer, self._layers)
+            #print(self.feature_list[index],self.feature_list[index+1])
         #######################################################################
         #                       ** END OF YOUR CODE **
         #######################################################################
 
-    def find_activation_func(self,index):
-        print(index)
-        print(self.activations[index], self.activations)
-        if self.activations[index] == "relu":
-            activation_class = ReluLayer()
-        elif self.activations[index] == "identity":
-            activation_class = IdentityLayer()
-        elif self.activations[index] == "sigmoid":
-            activation_class = SigmoidLayer()
-        else:
-            raise AssertionError("Wrong activation function")
-        return activation_class
 
     def forward(self, x):
         """
@@ -361,8 +329,8 @@ class MultiLayerNetwork(object):
         #                       ** START OF YOUR CODE **
         #######################################################################
 
-        for i in range(len(self.neurons)):
-            x = self._layers[i][1].forward(self._layers[i][0].forward(x))
+        for i in range(len(self._layers)):
+            x = self._layers[i].forward(x)
         return x
 
         #######################################################################
@@ -392,8 +360,8 @@ class MultiLayerNetwork(object):
         #                       ** START OF YOUR CODE **
         #######################################################################
 
-        for layer_n in range(len(self.neurons)-1,-1,-1):
-            grad_z = self._layers[layer_n][0].backward(self._layers[layer_n][1].backward(grad_z))
+        for layer_n in range(len(self._layers)-1,-1,-1):
+            grad_z = self._layers[layer_n].backward(grad_z)
         return grad_z #RETURNS GRADIENT OF FUNC WRT TO INPUTS
 
         #######################################################################
@@ -412,8 +380,11 @@ class MultiLayerNetwork(object):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        for layer_n in range(len(self.neurons)-1,-1,-1):
-            self._layers[layer_n][0].update_params(learning_rate)
+        for layer_n in range(len(self._layers)-1,-1,-1):
+            if self._layers[layer_n] in self.index_linear_layer:
+                self._layers[layer_n].update_params(learning_rate)
+            else:
+                continue
 
         #######################################################################
         #                       ** END OF YOUR CODE **
