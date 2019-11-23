@@ -506,6 +506,7 @@ class Trainer(object):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
+        print('getting number of batches')
         n_batches = np.floor(input_dataset.shape[0]/self.batch_size).astype(int)
         loss_arr = []
         print('training')
@@ -543,13 +544,11 @@ class Trainer(object):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        print('evaluating loss')
         prediction = self.multilayer_network.forward(input_dataset)
 
         loss = self._loss_layer.forward(prediction, target_dataset)
         self.grad_z = self._loss_layer.backward()
 
-        print('evaluated loss')
         return loss
         #######################################################################
         #                       ** END OF YOUR CODE **
