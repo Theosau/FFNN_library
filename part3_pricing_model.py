@@ -1,7 +1,20 @@
 from sklearn.calibration import CalibratedClassifierCV
 from sklearn.model_selection import train_test_split
+from sklearn.metrics import confusion_matrix
+
+# from sklearn import preprocessing
+from sklearn import preprocessing
+from sklearn.preprocessing import LabelEncoder, OneHotEncoder, StandardScaler
+from sklearn.decomposition import PCA
+
+from keras.models import Sequential
+from keras.layers import Dense
+import keras
+
+import matplotlib.pyplot as plt
 import pickle
 import numpy as np
+import pandas as pd
 
 
 def fit_and_calibrate_classifier(classifier, X, y):
@@ -17,7 +30,7 @@ def fit_and_calibrate_classifier(classifier, X, y):
 
 
 # class for part 3
-class PricingModel():
+class PricingModel(object):
     # YOU ARE ALLOWED TO ADD MORE ARGUMENTS AS NECESSARY
     def __init__(self, calibrate_probabilities=False):
         """
@@ -40,8 +53,11 @@ class PricingModel():
         # If you wish to use the classifier in part 2, you will need
         # to implement a predict_proba for it before use
         # =============================================================
-        self.base_classifier = None # ADD YOUR BASE CLASSIFIER HERE
+        self.base_classifier = self.build_base_classifier()
 
+    def build_base_classifier(self):
+        model = Sequential()
+        return model
 
     # YOU ARE ALLOWED TO ADD MORE ARGUMENTS AS NECESSARY TO THE _preprocessor METHOD
     def _preprocessor(self, X_raw):
@@ -60,10 +76,9 @@ class PricingModel():
         X: ndarray
             A clean data set that is used for training and prediction.
         """
-        # =============================================================
-        # YOUR CODE HERE
-
-        return  # YOUR CLEAN DATA AS A NUMPY ARRAY
+        scaler = preprocessing.StandardScaler()
+        scaled_data = scaler.fit_transform(X_raw)
+        return  scaled_data
 
     def fit(self, X_raw, y_raw, claims_raw):
         """Classifier training function.
@@ -86,17 +101,44 @@ class PricingModel():
 
         """
         nnz = np.where(claims_raw != 0)[0]
-        self.y_mean = np.mean(claims_raw[nnz])
-        # =============================================================
-        # REMEMBER TO A SIMILAR LINE TO THE FOLLOWING SOMEWHERE IN THE CODE
-        X_clean = self._preprocessor(X_raw)
+        self.y_mean = np.mean(claims_raw[nnz]) # MEAN CNST FOR SEVERITY
+
+        X_CLEAN = self.prepare_data_preprocessing(X_raw)
+        CLAIM = pd.DataFrame.from_dict({'claim_amount':claims_raw})
+        Y_RAW = pd.DataFrame.from_dict({'made_claim':y_raw})
+
+        # NN CONFIG
+        input_shape = X_CLEAN.shape
+        num_classes = 1
+        epochs = 100
+        batch_size = 128
+        METRICS = [
+              keras.metrics.TruePositives(name='tp'),
+              keras.metrics.FalsePositives(name='fp'),
+              keras.metrics.SensitivityAtSpecificity(1),
+              keras.metrics.TrueNegatives(name='tn'),
+              keras.metrics.FalseNegatives(name='fn'),
+              keras.metrics.BinaryAccuracy(name='accuracy'),
+              keras.metrics.Precision(name='precision'),
+              keras.metrics.Recall(name='recall'),
+              keras.metrics.AUC(name='auc'),
+        ]
+
+        # Input layer
+        self.base_classifier.add(Dense(12,input_dim=input_shape[1], activation= 'relu'))
+        # Hidden layer
+        self.base_classifier.add(Dense(12, kernel_initializer = 'glorot_uniform',activation = 'relu'))
+        # Output layer
+        self.base_classifier.add(Dense(num_classes, kernel_initializer = 'glorot_uniform',activation = 'sigmoid'))
+        # Compile model
+        self.base_classifier.compile(loss = 'binary_crossentropy', optimizer = 'adam', metrics = [METRICS])
 
         # THE FOLLOWING GETS CALLED IF YOU WISH TO CALIBRATE YOUR PROBABILITES
         if self.calibrate:
             self.base_classifier = fit_and_calibrate_classifier(
-                self.base_classifier, X_clean, y_raw)
+                self.base_classifier, X_CLEAN, Y_RAW)
         else:
-            self.base_classifier = self.base_classifier.fit(X_clean, y_raw)
+            self.base_classifier = self.base_classifier.fit(X_CLEAN, Y_RAW, epochs = epochs, batch_size = batch_size, verbose = 1)
         return self.base_classifier
 
     def predict_claim_probability(self, X_raw):
@@ -151,3 +193,67 @@ class PricingModel():
         # =============================================================
         with open('part3_pricing_model.pickle', 'wb') as target:
             pickle.dump(self, target)
+        return None
+
+    def get_data(self):
+        data = pd.read_table('part3_data.csv',delimiter = ',',index_col = 0)
+        data.drop_duplicates()
+        data['drv_sex2'].fillna('N',inplace = True)
+        data.dropna(inplace = True)
+        return data
+
+    def prepare_data_preprocessing(self,data):
+        # Data is a pandas dataframe of X_raw
+        string_cols = data.select_dtypes([object]).columns
+        one_hot_strings = string_cols[[1,2,3,5,6,7]] # Selected columns for cosideration (one-hot)
+
+        PCA_cols = data.select_dtypes(exclude = [object]).columns
+        float_data = data[PCA_cols] #exclude claim and made claims
+        corrected_float_data = pd.DataFrame(self._preprocessor(float_data),columns = PCA_cols)
+
+        pca_reduced_data = self.PCA_complete(corrected_float_data,PCA_cols,n=15) # NEW X_RAW_FLOAT
+        one_hotted_data = self.onehot_complete(data,one_hot_strings) # NEW X_RAW_DISCRETISED TO ONEHOT
+        X_RAW = pd.concat([pca_reduced_data,one_hotted_data],axis = 1)
+        # CLAIM = pd.DataFrame.from_dict({'claim_amount':data['claim_amount'].values})
+        # Y = pd.DataFrame.from_dict({'made_claim':data['made_claim'].values})
+
+        return X_RAW
+
+    def PCA_complete(self,corrected_float_data,PCA_cols,n):
+        # Reduced dimension number
+        n = 15
+
+        # FIND THE PCA FIT
+        pca = PCA(n_components=n)#len(data_float.columns[:-1]))
+        pca.fit(corrected_float_data)
+        var = np.cumsum(np.round(pca.explained_variance_ratio_, decimals=4)*100)
+        print(np.sum(pca.explained_variance_ratio_))
+
+        # TRANSFORM DATA INTO n = 15 PCA COMPONENTS
+        float_dict = {}
+        reduced_data = pca.fit_transform(corrected_float_data[PCA_cols[:-2]])
+        for i in range(n):
+            float_dict['PCA_{}'.format(i+1)] = reduced_data[:,i]
+        pca_reduced_data = pd.DataFrame.from_dict(float_dict)
+
+        # plt.plot(range(0,n+1), [0] + list(var))
+        # plt.show()
+
+        return pca_reduced_data
+
+    def onehot_complete(self,data,one_hot_strings):
+        one_hotted_dict = {}
+
+        for hot in one_hot_strings:
+            values = data[hot].values
+            # # Value encode
+            label_encoder = LabelEncoder()
+            integer_encoded = label_encoder.fit_transform(values)
+            # # binary encode
+            onehot_encoder = OneHotEncoder(sparse=False,categories='auto')
+            integer_encoded = integer_encoded.reshape(len(integer_encoded), 1)
+            onehot_encoded = onehot_encoder.fit_transform(integer_encoded)
+            for n, index in enumerate(np.unique(values)):
+                one_hotted_dict['{}_{}'.format(hot,index)] = onehot_encoded[:,n]
+        one_hot_data = pd.DataFrame.from_dict(one_hotted_dict)
+        return one_hot_data
