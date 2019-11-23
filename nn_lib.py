@@ -92,7 +92,7 @@ class SigmoidLayer(Layer):
 
     def __init__(self):
         self._cache_current = None
-        self.f_prime = 0
+        #self.f_prime = 0
 
     def forward(self, x):
         #######################################################################
@@ -134,7 +134,6 @@ class ReluLayer(Layer):
         #                       ** START OF YOUR CODE **
         #######################################################################
         self._cache_current = np.maximum(np.zeros_like(x), x)
-        #self._cache_current = self.z
         #######################################################################
         #                       ** END OF YOUR CODE **
         #######################################################################
@@ -150,7 +149,7 @@ class ReluLayer(Layer):
         self.f_prime[self.f_prime<0] = 0
         self.f_prime[self.f_prime>0] = 1
 
-        grad_loss_wrt_inputs = np.multiply(grad_z, self.f_prime) # GRAD_Z for linear unit
+        grad_loss_wrt_inputs = np.multiply(grad_z, self.f_prime)
         #######################################################################
         #                       ** END OF YOUR CODE **
         #######################################################################
