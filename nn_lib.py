@@ -446,7 +446,7 @@ class Trainer(object):
             self._loss_layer = CrossEntropyLossLayer()
         else:
             raise Exception('Wrong Loss, chose between: mse, cross_entropy')
-        print('chose the loss function')
+
         #######################################################################
         #                       ** END OF YOUR CODE **
         #######################################################################
@@ -467,19 +467,6 @@ class Trainer(object):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        #print(target_dataset.shape)
-        # if target_dataset.shape == (input_dataset.shape[0],):
-        #     target_dataset = target_dataset.reshape((input_dataset.shape[0], 1))
-        # #print(target_dataset.shape, input_dataset.shape)
-        # stacked_data = np.hstack((input_dataset,target_dataset))
-        # np.random.shuffle(stacked_data)
-        #
-        # if input_dataset.shape == (input_dataset.shape[0],):
-        #     shuffled_inputs = stacked_data[0]
-        #     shuffled_targets = stacked_data[1]
-        # else:
-        #     shuffled_inputs = stacked_data[:,:-target_dataset.shape[1]]
-        #     shuffled_targets = stacked_data[:,-target_dataset.shape[1]:]
 
         if input_dataset.shape == (input_dataset.shape[0],):
             input_dataset = input_dataset.reshape(input_dataset.shape[0], 1)
@@ -489,10 +476,7 @@ class Trainer(object):
 
         shuffled_inputs = input_dataset[indices,:]
         shuffled_targets = target_dataset[indices,:]
-        #print(input_dataset.shape, target_dataset.shape)
 
-        # if shuffled_inputs.shape == (input_dataset.shape[0], 1):
-        #     shuffled_inputs = shuffled_inputs.reshape(input_dataset.shape[0],)
         if shuffled_targets.shape == (input_dataset.shape[0], 1):
             shuffled_targets = shuffled_targets.reshape(input_dataset.shape[0],)
 
@@ -524,10 +508,10 @@ class Trainer(object):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        print('getting number of batches')
+
         n_batches = np.floor(input_dataset.shape[0]/self.batch_size).astype(int)
         loss_arr = []
-        print('training')
+
         for epoch in range(self.nb_epoch):
 
             if self.shuffle_flag:
@@ -549,7 +533,7 @@ class Trainer(object):
                 self.multilayer_network.backward(self.grad_z)
                 self.multilayer_network.update_params(self.learning_rate)
                 loss_arr.append(loss)
-        print('training done')
+
         return loss_arr
         #######################################################################
         #                       ** END OF YOUR CODE **
