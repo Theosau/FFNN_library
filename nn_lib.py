@@ -620,7 +620,7 @@ class Preprocessor(object):
         #######################################################################
         try:
             return (data - self.min_data)/(self.max_data - self.min_data)
-        except:
+        except ZeroDivisionError:
             print('One set of features has no variance.')
         #######################################################################
         #                       ** END OF YOUR CODE **
