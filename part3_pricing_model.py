@@ -21,8 +21,6 @@ import numpy as np
 import pandas as pd
  
 # VERSION ALVARO
- 
-MODEL_FILE_NAME = "part3_pricing_model.h5"
 
 
 def fit_and_calibrate_classifier(classifier, X, y):
@@ -72,7 +70,7 @@ class PricingModel(object):
         return model
  
     # YOU ARE ALLOWED TO ADD MORE ARGUMENTS AS NECESSARY TO THE _preprocessor METHOD
-    def _preprocessor(self, X_raw):
+    def _preprocessor(self, X_raw, bTrain=False):
         """Data preprocessing function.
  
         This function prepares the features of the data for training,
@@ -88,9 +86,25 @@ class PricingModel(object):
         X: ndarray
             A clean data set that is used for training and prediction.
         """
+        
+
+        X_raw['drv_sex2'].fillna('N',inplace = True)
+        X_raw.dropna(inplace = True, axis=1)
+
+        one_hot_cols = ['pol_coverage', 'pol_pay_freq', 'pol_payd', 'pol_usage', 'drv_drv2',
+       'drv_sex1', 'drv_sex2', 'vh_fuel', 'vh_type']
+        one_hotted_data = self.onehot_complete(X_raw,one_hot_cols) # NEW X_RAW_DISCRETISED TO ONEHOT
+
+        PCA_cols = X_raw.select_dtypes(exclude = [object]).columns
+        float_data = X_raw[PCA_cols]
         scaler = preprocessing.StandardScaler()
-        scaled_data = scaler.fit_transform(X_raw)
-        return  scaled_data
+        scaled_data = scaler.fit_transform(float_data)
+        corrected_float_data = pd.DataFrame(scaled_data, columns = PCA_cols)
+        pca_reduced_data = self.PCA_complete(corrected_float_data, bTrain) # NEW X_RAW_FLOAT
+
+        X_clean = pd.concat([pca_reduced_data,one_hotted_data],axis = 1)
+
+        return  X_clean
  
     def fit(self, X_raw, y_raw, claims_raw, nn_size = 32, epochs = 100, batch_size = 128, regularise = 0.001):
         """Classifier training function.
@@ -115,10 +129,11 @@ class PricingModel(object):
         nnz = np.where(claims_raw != 0)[0]
         self.y_mean = np.mean(claims_raw[nnz]) # MEAN CNST FOR SEVERITY
  
-        X_CLEAN = self.prepare_data_preprocessing(X_raw,bTrain=True)
+        X_CLEAN = self._preprocessor(X_raw,bTrain=True)
         CLAIM = pd.DataFrame.from_dict({'claim_amount':claims_raw})
         Y_RAW = pd.DataFrame.from_dict({'made_claim':y_raw})
  
+
         # OUTPUTS NOT A DATAFRAME ANYMORE BUT A NUMPY ARRAY
         features, labels, claims = self.over_sampler(X_CLEAN.values,Y_RAW.values,CLAIM.values)
  
@@ -134,17 +149,7 @@ class PricingModel(object):
         num_classes = 1
         epochs = epochs
         batch_size = batch_size
-        METRICS = [
-              keras.metrics.TruePositives(name='tp'),
-              keras.metrics.FalsePositives(name='fp'),
-              keras.metrics.SensitivityAtSpecificity(1),
-              keras.metrics.TrueNegatives(name='tn'),
-              keras.metrics.FalseNegatives(name='fn'),
-              keras.metrics.BinaryAccuracy(name='accuracy'),
-              keras.metrics.Precision(name='precision'),
-              keras.metrics.Recall(name='recall'),
-              keras.metrics.AUC(name='auc'),
-        ]
+
         # MLP
         if self.linear_model is False:
             # Input layer
@@ -162,16 +167,16 @@ class PricingModel(object):
         else:
             # DO THIS FOR A LOGISTIC REGRESSION UNIT
             self.base_classifier.add(Dense(nn_size,input_dim=input_shape[1], kernel_initializer = 'glorot_uniform', activation= 'relu'))
-        self.base_classifier.compile(loss = 'binary_crossentropy', optimizer = Adam(lr=0.0001), metrics = [METRICS])
+        self.base_classifier.compile(loss = 'binary_crossentropy', optimizer = Adam(lr=0.0001), metrics = ['accuracy'])
  
         # THE FOLLOWING GETS CALLED IF YOU WISH TO CALIBRATE YOUR PROBABILITES
         if self.calibrate:
             self.base_classifier = fit_and_calibrate_classifier(
                 self.base_classifier, features, labels)
         else:
-            self.base_classifier = self.base_classifier.fit(features, labels, epochs = epochs, batch_size = batch_size, verbose = 0)
+            self.base_classifier = self.base_classifier.fit(features, labels, epochs = epochs, batch_size = batch_size, verbose = 0).model
 
-        self.save_model(self.base_classifier.model)
+        self.save_model()
         return self.base_classifier
  
     def predict_claim_probability(self, X_raw):
@@ -192,7 +197,7 @@ class PricingModel(object):
             POSITIVE class (that had accidents)
         """
         try:
-            X_CLEAN = self.prepare_data_preprocessing(X_raw)
+            X_CLEAN = self._preprocessor(X_raw)
             predictions = self.base_classifier.predict(X_CLEAN)
         except AttributeError:
             raise (
@@ -218,8 +223,9 @@ class PricingModel(object):
             POSITIVE class (that had accidents)
         """
         # REMEMBER TO INCLUDE ANY PRICING STRATEGY HERE.
- 
-        return self.predict_claim_probability(X_raw) * self.y_mean
+        res = self.predict_claim_probability(X_raw) * self.y_mean * 2.25
+        res = res.reshape(len(res),)
+        return res
  
     def over_sampler(self, features, labels, claims):
         labels = np.reshape(labels,(len(labels),))
@@ -252,47 +258,32 @@ class PricingModel(object):
         labels = labels_
         return features, labels, claims
  
-    @staticmethod
-    def save_model(model):
-        model.save(MODEL_FILE_NAME)
+    def save_model(self):
+        """Saves the class instance as a pickle file."""
+        # =============================================================
+        with open('part3_pricing_model.pickle', 'wb') as target:
+            pickle.dump(self, target)
+
  
     def get_data(self):
         data = pd.read_table('part3_data.csv',delimiter = ',',index_col = 0)
-        data.drop_duplicates()
-        data['drv_sex2'].fillna('N',inplace = True)
-        data.dropna(inplace = True)
+
         return data
- 
-    def prepare_data_preprocessing(self,data,bTrain = True):
-        # Data is a pandas dataframe of X_raw
-        string_cols = data.select_dtypes([object]).columns
-        one_hot_strings = string_cols[[0,1,2,3,5,6,7,8,11]] # Selected columns for cosideration (one-hot)
-        # [0,1,2,3,5,6,7,11]
-        PCA_cols = data.select_dtypes(exclude = [object]).columns
-        float_data = data[PCA_cols] #exclude claim and made claims
-        corrected_float_data = pd.DataFrame(self._preprocessor(float_data),columns = PCA_cols)
- 
-        pca_reduced_data = self.PCA_complete(corrected_float_data,bTrain) # NEW X_RAW_FLOAT
-        one_hotted_data = self.onehot_complete(data,one_hot_strings) # NEW X_RAW_DISCRETISED TO ONEHOT
-        X_RAW = pd.concat([pca_reduced_data,one_hotted_data],axis = 1)
-        # CLAIM = pd.DataFrame.from_dict({'claim_amount':data['claim_amount'].values})
-        # Y = pd.DataFrame.from_dict({'made_claim':data['made_claim'].values})
- 
-        return X_RAW
  
     def PCA_complete(self,corrected_float_data, bTrain = True):
         # Reduced dimension number
-        n = 15
+        n = 10
  
         if bTrain:
             # FIND THE PCA FIT
             pca = PCA(n_components=n) #len(data_float.columns[:-1]))
             pca.fit(corrected_float_data)
             var = np.cumsum(np.round(pca.explained_variance_ratio_, decimals=4)*100)
-            # print(np.sum(pca.explained_variance_ratio_))
+            print(np.sum(pca.explained_variance_ratio_))
  
             # SAVE PCA FOR TESTING...
             self.pca_model  = pca
+        
  
         # TRANSFORM DATA INTO n = 15 PCA COMPONENTS
         float_dict = {}
@@ -307,27 +298,35 @@ class PricingModel(object):
         return pca_reduced_data
  
     def onehot_complete(self,data,one_hot_strings):
-        one_hotted_dict = {}
-        # ONE_HOT ENCODES, TEST and TRAIN must have the same attributes...
-        for hot in one_hot_strings:
-            values = data[hot].values
-            # # Value encode
-            label_encoder = LabelEncoder()
-            integer_encoded = label_encoder.fit_transform(values)
-            # # binary encode
-            onehot_encoder = OneHotEncoder(sparse=False,categories='auto')
-            integer_encoded = integer_encoded.reshape(len(integer_encoded), 1)
-            onehot_encoded = onehot_encoder.fit_transform(integer_encoded)
-            for n, index in enumerate(np.unique(values)):
-                one_hotted_dict['{}_{}'.format(hot,index)] = onehot_encoded[:,n]
-        one_hot_data = pd.DataFrame.from_dict(one_hotted_dict)
+#         one_hotted_dict = {}
+#         # ONE_HOT ENCODES, TEST and TRAIN must have the same attributes...
+#         for hot in one_hot_strings:
+#             values = data[hot].values
+#             # # Value encode
+#             label_encoder = LabelEncoder()
+#             integer_encoded = label_encoder.fit_transform(values)
+#             # # binary encode
+#             onehot_encoder = OneHotEncoder(sparse=False,categories='auto')
+#             integer_encoded = integer_encoded.reshape(len(integer_encoded), 1)
+#             onehot_encoded = onehot_encoder.fit_transform(integer_encoded)
+#             for n, index in enumerate(np.unique(values)):
+#                 one_hotted_dict['{}_{}'.format(hot,index)] = onehot_encoded[:,n]
+#         one_hot_data = pd.DataFrame.from_dict(one_hotted_dict)
+        if 'encoder' in self.__dict__:
+            enc = self.encoder
+        else:
+            enc = OneHotEncoder()
+            enc.fit(data[one_hot_strings])
+            self.encoder = enc
+        
+        one_hot_data = pd.DataFrame(enc.transform(data[one_hot_strings]).toarray())
         return one_hot_data
  
     def evaluate_model(self, X_raw, y_raw):
         """Architecture evaluation utility.
             TESTING, X_raw,y_raw are evaluation datasets
         """
-        X_clean = self.prepare_data_preprocessing(X_raw,bTrain=False)
+        X_clean = self._preprocessor(X_raw,bTrain=False)
         predictions = self.base_classifier.model.predict_classes(X_clean)
         predictions_proba = self.base_classifier.model.predict(X_clean)
         cm = confusion_matrix(y_raw, predictions)
@@ -363,10 +362,3 @@ def run_all(self,save_model = False,fraction = 0.85):
         self.save_model()
  
     return roc_auc, scores, cm
-
-def load_model():
-    """Loads the keras model stored."""
-
-    model = keras.models.load_model(MODEL_FILE_NAME)
-    pp = PricingModel(model=model)
-    return pp
