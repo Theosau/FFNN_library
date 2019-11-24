@@ -92,13 +92,11 @@ class SigmoidLayer(Layer):
 
     def __init__(self):
         self._cache_current = None
-        #self.f_prime = 0
 
     def forward(self, x):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-
         self._cache_current = 1/(1 + np.exp(-x))
 
         return self._cache_current
@@ -110,6 +108,7 @@ class SigmoidLayer(Layer):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
+        #Differential of the sigmoid function
         self.f_prime = self._cache_current * (1 - self._cache_current)
         grad_loss_wrt_inputs = grad_z * self.f_prime
 
@@ -145,6 +144,7 @@ class ReluLayer(Layer):
         #                       ** START OF YOUR CODE **
         #######################################################################
 
+        #Diferential of the Relu function
         self.f_prime = self._cache_current.copy()
         self.f_prime[self.f_prime<0] = 0
         self.f_prime[self.f_prime>0] = 1
@@ -204,7 +204,7 @@ class LinearLayer(Layer):
         #######################################################################
         self.batch_size = x.shape[0]
         self._cache_current = x
-
+        #Matrix multiplication for to go forward through the linear layer
         return (np.matmul(x, self._W) + self._b)
 
         #######################################################################
@@ -254,6 +254,7 @@ class LinearLayer(Layer):
         #                       ** START OF YOUR CODE **
         #######################################################################
 
+        #Gradient descent for the weights and bias respectively
         self._W -= learning_rate*self._grad_W_current
         self._b -= learning_rate*self._grad_b_current
 
@@ -281,11 +282,9 @@ class MultiLayerNetwork(object):
         self.neurons = neurons # L
         self.activations = activations # L
 
-        self._layers = []
-        self.index_linear_layer = []
-        self._w_gradients = [None]*len(self.neurons)
-        self._b_gradients = [None]*len(self.neurons)
-        self.feature_list = [self.input_dim] + self.neurons
+        self._layers = [] #list of all the layes
+        self.index_linear_layer = [] #position of all the linear layers
+        self.feature_list = [self.input_dim] + self.neurons #list of neurons per layer including the input
 
         #######################################################################
         #                       ** START OF YOUR CODE **
@@ -293,9 +292,11 @@ class MultiLayerNetwork(object):
 
         for index, feature in enumerate(self.neurons):
 
-            self.index_linear_layer.append(len(self._layers))
+            self.index_linear_layer.append(len(self._layers)) #getting the postion of the linear layers
+            #Linear layer with the corresponding input and output dimensions
             self._layers.append(LinearLayer(self.feature_list[index],self.feature_list[index+1]))
 
+            #Creating the layer instance corresponding to the activation function
             if self.activations[index] == "relu":
                 self._layers.append(ReluLayer())
             elif self.activations[index] == "sigmoid":
@@ -324,6 +325,7 @@ class MultiLayerNetwork(object):
         #                       ** START OF YOUR CODE **
         #######################################################################
 
+        #Forwards through all the layers
         for i in range(len(self._layers)):
             x = self._layers[i].forward(x)
         return x
@@ -355,6 +357,7 @@ class MultiLayerNetwork(object):
         #                       ** START OF YOUR CODE **
         #######################################################################
 
+        #Backpropagation through all the layers
         for layer_n in range(len(self._layers)-1,-1,-1):
             grad_z = self._layers[layer_n].backward(grad_z)
         return grad_z #RETURNS GRADIENT OF FUNC WRT TO INPUTS
@@ -375,6 +378,8 @@ class MultiLayerNetwork(object):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
+
+        #Parameters update performed on the linear layers only
         for layer_n in range(len(self._layers)-1,-1,-1):
             if layer_n in self.index_linear_layer:
                 self._layers[layer_n].update_params(learning_rate)
@@ -468,15 +473,17 @@ class Trainer(object):
         #                       ** START OF YOUR CODE **
         #######################################################################
 
-        if input_dataset.shape == (input_dataset.shape[0],):
-            input_dataset = input_dataset.reshape(input_dataset.shape[0], 1)
+        #Reshaping to use the create indices and shuffle the array
         if target_dataset.shape == (input_dataset.shape[0],):
             target_dataset = target_dataset.reshape(input_dataset.shape[0], 1)
+
+        #Creating of shuffled indices to shuffle the full dataset
         indices = np.random.permutation(input_dataset.shape[0])
 
         shuffled_inputs = input_dataset[indices,:]
         shuffled_targets = target_dataset[indices,:]
 
+        #Reshaping to comply with teh LabTS tests
         if shuffled_targets.shape == (input_dataset.shape[0], 1):
             shuffled_targets = shuffled_targets.reshape(input_dataset.shape[0],)
 
@@ -509,32 +516,40 @@ class Trainer(object):
         #                       ** START OF YOUR CODE **
         #######################################################################
 
+        #Finding the number of batches based on the batch size
         n_batches = np.floor(input_dataset.shape[0]/self.batch_size).astype(int)
-        loss_arr = []
+        loss_arr = [] ##TO BE TAKEN OFF ONCE NOT TESTING ANYMORE
 
         for epoch in range(self.nb_epoch):
+
+            #Reshaping in case of single input
+            if input_dataset.shape == (input_dataset.shape[0],):
+                input_dataset = input_dataset.reshape(input_dataset.shape[0], 1)
 
             if self.shuffle_flag:
                 input_dataset,target_dataset = self.shuffle(input_dataset,target_dataset)
 
-                if input_dataset.shape == (input_dataset.shape[0],):
-                    input_dataset = input_dataset.reshape(input_dataset.shape[0], 1)
-
+            #Reshaping to use hstack
             if target_dataset.shape == (input_dataset.shape[0],):
                 target_dataset = target_dataset.reshape(input_dataset.shape[0], 1)
 
+            #Splitting into the n batches
             data = np.hstack((input_dataset,target_dataset))
             batch_list = np.vsplit(data[:int(n_batches*self.batch_size)],n_batches)
+            #Adding the remainder datapoints to the last batch
             if int(n_batches*self.batch_size) != data.shape[0]:
                 batch_list.append(data[int(n_batches*self.batch_size):])
 
+            #Performing backpropagation and paramters update
             for batch in batch_list:
                 loss = self.eval_loss(batch[:,:-target_dataset.shape[1]],batch[:,-target_dataset.shape[1]:])
+                loss_arr.append(loss) ##TO BE TAKEN OFF ONCE NOT TESTING ANYMORE
+
                 self.multilayer_network.backward(self.grad_z)
                 self.multilayer_network.update_params(self.learning_rate)
-                loss_arr.append(loss)
 
-        return loss_arr
+        return loss_arr ##TO BE TAKEN OFF ONCE NOT TESTING ANYMORE
+
         #######################################################################
         #                       ** END OF YOUR CODE **
         #######################################################################
@@ -552,8 +567,11 @@ class Trainer(object):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
+
+        #Going through the network
         prediction = self.multilayer_network.forward(input_dataset)
 
+        #Computing the loss and the gradient with repect to the final outputs
         loss = self._loss_layer.forward(prediction, target_dataset)
         self.grad_z = self._loss_layer.backward()
 
@@ -600,7 +618,10 @@ class Preprocessor(object):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        return (data - self.min_data)/(self.max_data - self.min_data)
+        try:
+            return (data - self.min_data)/(self.max_data - self.min_data)
+        except:
+            print('One set of features has no variance.')
         #######################################################################
         #                       ** END OF YOUR CODE **
         #######################################################################
@@ -626,8 +647,8 @@ class Preprocessor(object):
 
 def example_main():
     input_dim = 4
-    neurons = [2,3,3]
-    activations = ["identity",'identity','sigmoid']
+    neurons = [2,3]
+    activations = ['relu','sigmoid']
     net = MultiLayerNetwork(input_dim, neurons, activations)
 
     dat = np.loadtxt("iris.dat")
@@ -651,7 +672,7 @@ def example_main():
     trainer = Trainer(
         network=net,
         batch_size=8,
-        nb_epoch=3000,
+        nb_epoch=4000,
         learning_rate=0.01,
         loss_fun="cross_entropy",
         shuffle_flag=True,
