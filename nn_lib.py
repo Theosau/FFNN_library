@@ -535,8 +535,9 @@ class Trainer(object):
 
                 if input_dataset.shape == (input_dataset.shape[0],):
                     input_dataset = input_dataset.reshape(input_dataset.shape[0], 1)
-                if target_dataset.shape == (input_dataset.shape[0],):
-                    target_dataset = target_dataset.reshape(input_dataset.shape[0], 1)
+
+            if target_dataset.shape == (input_dataset.shape[0],):
+                target_dataset = target_dataset.reshape(input_dataset.shape[0], 1)
 
             data = np.hstack((input_dataset,target_dataset))
             batch_list = np.vsplit(data[:int(n_batches*self.batch_size)],n_batches)
