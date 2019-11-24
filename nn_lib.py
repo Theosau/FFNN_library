@@ -599,12 +599,9 @@ class Preprocessor(object):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
+        #Axis 0 which corresponds to taking the max for each feature
         self.max_data = np.max(data, axis = 0)
         self.min_data = np.min(data, axis = 0)
-
-        print(self.max_data.shape)
-        print(self.min_data.shape)
-
         #######################################################################
         #                       ** END OF YOUR CODE **
         #######################################################################
@@ -622,14 +619,12 @@ class Preprocessor(object):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
-        import traceback
-        print(data.shape)
+
         try:
             return (data - self.min_data)/(self.max_data - self.min_data)
-        except Exception:
-            print(traceback.format_exc())
-            print('One set of features has no variance.')
-            return data
+        except ZeroDivisionError:
+            return data #if there is only one input data point
+
         #######################################################################
         #                       ** END OF YOUR CODE **
         #######################################################################
