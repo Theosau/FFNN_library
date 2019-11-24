@@ -491,10 +491,10 @@ class Trainer(object):
         shuffled_targets = target_dataset[indices,:]
         #print(input_dataset.shape, target_dataset.shape)
 
-        if shuffled_inputs.shape == (input_dataset.shape[0], 1):
-            shuffled_inputs = shuffled_inputs.reshape(input_dataset.shape[0], )
+        # if shuffled_inputs.shape == (input_dataset.shape[0], 1):
+        #     shuffled_inputs = shuffled_inputs.reshape(input_dataset.shape[0],)
         if shuffled_targets.shape == (input_dataset.shape[0], 1):
-            shuffled_targets = shuffled_targets.reshape(input_dataset.shape[0], )
+            shuffled_targets = shuffled_targets.reshape(input_dataset.shape[0],)
 
         return (shuffled_inputs, shuffled_targets)
         #######################################################################
@@ -532,6 +532,11 @@ class Trainer(object):
 
             if self.shuffle_flag:
                 input_dataset,target_dataset = self.shuffle(input_dataset,target_dataset)
+
+                if input_dataset.shape == (input_dataset.shape[0],):
+                    input_dataset = input_dataset.reshape(input_dataset.shape[0], 1)
+                if target_dataset.shape == (input_dataset.shape[0],):
+                    target_dataset = target_dataset.reshape(input_dataset.shape[0], 1)
 
             data = np.hstack((input_dataset,target_dataset))
             batch_list = np.vsplit(data[:int(n_batches*self.batch_size)],n_batches)
