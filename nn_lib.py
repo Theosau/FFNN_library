@@ -468,18 +468,28 @@ class Trainer(object):
         #                       ** START OF YOUR CODE **
         #######################################################################
         #print(target_dataset.shape)
-        if target_dataset.shape == (input_dataset.shape[0],):
-            target_dataset = target_dataset.reshape((input_dataset.shape[0], 1))
-        #print(target_dataset.shape, input_dataset.shape)
-        stacked_data = np.hstack((input_dataset,target_dataset))
-        np.random.shuffle(stacked_data)
+        # if target_dataset.shape == (input_dataset.shape[0],):
+        #     target_dataset = target_dataset.reshape((input_dataset.shape[0], 1))
+        # #print(target_dataset.shape, input_dataset.shape)
+        # stacked_data = np.hstack((input_dataset,target_dataset))
+        # np.random.shuffle(stacked_data)
+        #
+        # if input_dataset.shape == (input_dataset.shape[0],):
+        #     shuffled_inputs = stacked_data[0]
+        #     shuffled_targets = stacked_data[1]
+        # else:
+        #     shuffled_inputs = stacked_data[:,:-target_dataset.shape[1]]
+        #     shuffled_targets = stacked_data[:,-target_dataset.shape[1]:]
 
         if input_dataset.shape == (input_dataset.shape[0],):
-            shuffled_inputs = stacked_data[0]
-            shuffled_targets = stacked_data[1]
-        else:
-            shuffled_inputs = stacked_data[:,:-target_dataset.shape[1]]
-            shuffled_targets = stacked_data[:,-target_dataset.shape[1]:]
+            input_dataset = input_dataset.reshape(input_dataset.shape[0], 1)
+        if target_dataset.shape == (input_dataset.shape[0],):
+            target_dataset = target_dataset.reshape(input_dataset.shape[0], 1)
+        print(input_dataset.shape, target_dataset.shape)
+        indices = np.random.permutation(input_dataset.shape[0])
+
+        shuffled_inputs = input_dataset[indices,:]
+        shuffled_targets = target_dataset[indices,:]
 
         return (shuffled_inputs, shuffled_targets)
         #######################################################################
