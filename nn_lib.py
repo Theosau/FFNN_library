@@ -485,11 +485,16 @@ class Trainer(object):
             input_dataset = input_dataset.reshape(input_dataset.shape[0], 1)
         if target_dataset.shape == (input_dataset.shape[0],):
             target_dataset = target_dataset.reshape(input_dataset.shape[0], 1)
-        print(input_dataset.shape, target_dataset.shape)
         indices = np.random.permutation(input_dataset.shape[0])
 
         shuffled_inputs = input_dataset[indices,:]
         shuffled_targets = target_dataset[indices,:]
+        #print(input_dataset.shape, target_dataset.shape)
+
+        if shuffled_inputs.shape == (input_dataset.shape[0], 1):
+            shuffled_inputs = shuffled_inputs.reshape(input_dataset.shape[0], )
+        if shuffled_targets.shape == (input_dataset.shape[0], 1):
+            shuffled_targets = shuffled_targets.reshape(input_dataset.shape[0], )
 
         return (shuffled_inputs, shuffled_targets)
         #######################################################################
