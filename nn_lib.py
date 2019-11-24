@@ -618,10 +618,14 @@ class Preprocessor(object):
         #######################################################################
         #                       ** START OF YOUR CODE **
         #######################################################################
+        import traceback
+
         try:
             return (data - self.min_data)/(self.max_data - self.min_data)
-        except ZeroDivisionError:
+        except Exception:
+            print(traceback.format_exc())
             print('One set of features has no variance.')
+            return data
         #######################################################################
         #                       ** END OF YOUR CODE **
         #######################################################################
