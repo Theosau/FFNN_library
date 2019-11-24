@@ -620,10 +620,7 @@ class Preprocessor(object):
         #                       ** START OF YOUR CODE **
         #######################################################################
 
-        try:
-            return (data - self.min_data)/(self.max_data - self.min_data)
-        except ZeroDivisionError:
-            return data #if there is only one input data point
+        return (data - self.min_data)/(self.max_data - self.min_data)
 
         #######################################################################
         #                       ** END OF YOUR CODE **
