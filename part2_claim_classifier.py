@@ -26,18 +26,28 @@ class ClaimClassifier:
         self.model = model
 
     @staticmethod
-    def over_sampler(features, labels):
+    def oversampler(features, labels):
+        """Run random oversampler"""
+
+        labels = np.reshape(labels, (len(labels),))
+
+        # Get number of 0s and 1s
         _, counts = np.unique(labels, return_counts=True)
+        # Difference between 0s and 1s count
         nb_to_pick = counts[0] - counts[1]
+        # Indices corresponding to 1 labels that need to be oversampled
         idx = np.where(labels == 1)[0]
+
+        # Randomly pick rows to duplicate
         random_sampled_features = np.random.choice(idx, nb_to_pick)
-
         random_sampled_features = [features[i] for i in random_sampled_features]
-
         random_sampled_features = np.array(random_sampled_features)
+
+        # Features and labels reshaping
         features = np.vstack((random_sampled_features, features))
         labels = np.concatenate((np.ones(nb_to_pick), labels))
 
+        # Shuffle both features and labels
         size = features.shape[0]
         idx = np.arange(0, size)
         np.random.shuffle(idx)
@@ -46,9 +56,9 @@ class ClaimClassifier:
         for i in range(size):
             features_[:][i] = features[:][idx[i]]
             labels_[i] = labels[idx[i]]
-
         features = features_
         labels = labels_
+
         return features, labels
 
     def _preprocessor(self, X_raw, y_raw=None):
@@ -73,8 +83,7 @@ class ClaimClassifier:
 
         # Oversample
         if y_raw is not None:
-            X_res, y_res = self.over_sampler(scaled_data, y_raw)
-
+            X_res, y_res = self.oversampler(scaled_data, y_raw)
             return X_res, y_res
         return scaled_data
 
@@ -190,6 +199,7 @@ class ClaimClassifier:
             values corresponding to the probability of beloning to the
             POSITIVE class (that had accidents)"""
 
+        # Predict claim probabilities if a model has already been generated
         try:
             X_clean = self._preprocessor(X_raw)
             predictions = self.model.predict(X_clean)
@@ -218,13 +228,14 @@ class ClaimClassifier:
         # Retrieve evaluation metrics
         cm = confusion_matrix(y_raw, predictions_binary)
         roc_auc = roc_auc_score(y_raw, predictions_proba)
-
+        # Dispaly results
         print(f"roc_auc: {roc_auc}")
         print(f"Confusion matrix \n {cm}")
         return roc_auc, cm
 
     @staticmethod
     def save_model(model):
+        """Save keras model as an h5 file."""
         model.save(MODEL_FILE_NAME)
 
 
@@ -272,8 +283,7 @@ def ClaimClassifierHyperParameterSearch():  # ENSURE TO ADD IN WHATEVER INPUTS Y
 
 
 def load_model():
-    """Loads the keras model stored."""
-
+    """Loads the h5 keras model stored."""
     model = keras.models.load_model(MODEL_FILE_NAME)
     cc = ClaimClassifier(model=model)
     return cc
