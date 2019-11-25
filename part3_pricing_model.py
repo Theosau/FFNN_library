@@ -216,7 +216,12 @@ class PricingModel(object):
             POSITIVE class (that had accidents)
         """
         # REMEMBER TO INCLUDE ANY PRICING STRATEGY HERE.
-        res = self.predict_claim_probability(X_raw) * self.y_mean * 2.25
+        if self.linear_model:
+            threshold = 8
+        else:
+            threshold = 2.28
+            #2.28
+        res = self.predict_claim_probability(X_raw) * self.y_mean * threshold 
         res = res.reshape(len(res),)
         return res
  
