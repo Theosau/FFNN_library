@@ -543,10 +543,13 @@ class Trainer(object):
             #Performing backpropagation and paramters update
             for batch in batch_list:
                 loss = self.eval_loss(batch[:,:-target_dataset.shape[1]],batch[:,-target_dataset.shape[1]:])
-                loss_arr.append(loss) ##TO BE TAKEN OFF ONCE NOT TESTING ANYMORE
+                #loss_arr.append(loss) ##TO BE TAKEN OFF ONCE NOT TESTING ANYMORE
 
                 self.multilayer_network.backward(self.grad_z)
                 self.multilayer_network.update_params(self.learning_rate)
+
+            loss_all = self.eval_loss(input_dataset, target_dataset)
+            loss_arr.append(loss_all) ##TO BE TAKEN OFF ONCE NOT TESTING ANYMORE
 
         return loss_arr ##TO BE TAKEN OFF ONCE NOT TESTING ANYMORE
 
