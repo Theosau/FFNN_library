@@ -18,27 +18,17 @@ class PricingModel:
     def __init__(
         self, linear_model=False, calibrate_probabilities=False, base_classifier=None
     ):
-        """
-        Feel free to alter this as you wish, adding instance variables as
-        necessary.
-        """
-        self.y_mean = None
-        self.calibrate = calibrate_probabilities
-        # =============================================================
-        # READ ONLY IF WANTING TO CALIBRATE
-        # Place your base classifier here
-        # NOTE: The base estimator must have:
-        #    1. A .fit method that takes two arguments, X, y
-        #    2. Either a .predict_proba method or a decision
-        #       function method that returns classification scores
-        #
-        # Note that almost every classifier you can find has both.
-        # If the one you wish to use does not then speak to one of the TAs
-        #
-        # If you wish to use the classifier in part 2, you will need
-        # to implement a predict_proba for it before use
-        # =============================================================
-        self.linear_model = linear_model
+        """Initialise placeholder instance variables."""
+
+        self.mean_claim = None  # Placeholder for mean claim
+        self.encoder = None  # Placeholder for onehot encoder
+        self.pca_model = None  # Placeholder for fitted pca model
+        self.calibrate = (
+            calibrate_probabilities
+        )  # Boolean on whether to calibrate or not
+        self.linear_model = linear_model  # Run the linear model
+
+        # This is the placeholder for our model
         if base_classifier is None:
             self.base_classifier = self.build_base_classifier()
         else:
@@ -46,24 +36,34 @@ class PricingModel:
 
     @staticmethod
     def build_base_classifier():
+        """Initialise keras neural network."""
+
         model = Sequential()
         return model
 
     @staticmethod
     def oversampler(features, labels):
+        """Run random oversampler"""
+
         labels = np.reshape(labels, (len(labels),))
 
+        # Get number of 0s and 1s
         _, counts = np.unique(labels, return_counts=True)
+        # Difference between 0s and 1s count
         nb_to_pick = counts[0] - counts[1]
+        # Indices corresponding to 1 labels that need to be oversampled
         idx = np.where(labels == 1)[0]
 
+        # Randomly pick rows to duplicate
         random_sampled_features = np.random.choice(idx, nb_to_pick)
         random_sampled_features = [features[i] for i in random_sampled_features]
         random_sampled_features = np.array(random_sampled_features)
 
+        # Features and labels reshaping
         features = np.vstack((random_sampled_features, features))
         labels = np.concatenate((np.ones(nb_to_pick), labels))
 
+        # Shuffle both features and labels
         size = features.shape[0]
         idx = np.arange(0, size)
         np.random.shuffle(idx)
@@ -74,22 +74,26 @@ class PricingModel:
             labels_[i] = labels[idx[i]]
         features = features_
         labels = labels_
+
         return features, labels
 
-    def run_pca(self, corrected_float_data, bTrain=True):
-        n = 10
+    def run_pca(self, X_continuous):
+        """Run PCA on clean continuous data."""
 
-        if bTrain:
-            # FIND THE PCA FIT
-            pca = PCA(n_components=n)  # len(data_float.columns[:-1]))
-            pca.fit(corrected_float_data)
+        # Hardcode number of pca features to keep
+        n = 9
 
-            # SAVE PCA FOR TESTING...
+        # If we are training we need to create the PCA model, otherwise use already fitted model
+        if self.pca_model is None:
+            pca = PCA(n_components=n)
+            pca.fit(X_continuous)
+
+            # Save PCA model for testing
             self.pca_model = pca
 
-        # TRANSFORM DATA INTO n = 15 PCA COMPONENTS
+        # Transform data into 9 PCA components
         float_dict = {}
-        reduced_data = self.pca_model.fit_transform(corrected_float_data)
+        reduced_data = self.pca_model.fit_transform(X_continuous)
         for i in range(n):
             float_dict["PCA_{}".format(i + 1)] = reduced_data[:, i]
         pca_reduced_data = pd.DataFrame.from_dict(float_dict)
@@ -97,19 +101,22 @@ class PricingModel:
         return pca_reduced_data
 
     def run_onehot(self, data, one_hot_strings):
+        """One hot encode categorical features"""
 
-        if "encoder" in self.__dict__:
+        # For testing we use the already fitted one hot encoder
+        if self.encoder is not None:
             enc = self.encoder
         else:
             enc = OneHotEncoder()
             enc.fit(data[one_hot_strings])
             self.encoder = enc
 
+        # Return dataframe with one hot encoded categorical features
         one_hot_data = pd.DataFrame(enc.transform(data[one_hot_strings]).toarray())
+
         return one_hot_data
 
-    # YOU ARE ALLOWED TO ADD MORE ARGUMENTS AS NECESSARY TO THE _preprocessor METHOD
-    def _preprocessor(self, X_raw, bTrain=False):
+    def _preprocessor(self, X_raw):
         """Data preprocessing function.
  
         This function prepares the features of the data for training,
@@ -126,9 +133,12 @@ class PricingModel:
             A clean data set that is used for training and prediction.
         """
 
+        # Keep drv_sex2 column and replace nans with N
         X_raw["drv_sex2"].fillna("N", inplace=True)
+        # Drop all columns with nans
         X_raw.dropna(inplace=True, axis=1)
 
+        # Categorical features we want to keep and one hot encode
         one_hot_cols = [
             "pol_coverage",
             "pol_pay_freq",
@@ -140,32 +150,27 @@ class PricingModel:
             "vh_fuel",
             "vh_type",
         ]
-        one_hotted_data = self.run_onehot(
-            X_raw, one_hot_cols
-        )  # NEW X_RAW_DISCRETISED TO ONEHOT
 
+        # One hot encode data
+        one_hotted_data = self.run_onehot(X_raw, one_hot_cols)
+
+        # Run PCA on continuous features
         PCA_cols = X_raw.select_dtypes(exclude=[object]).columns
         float_data = X_raw[PCA_cols]
+
+        # Normalize and scale data appropriately
         scaler = StandardScaler()
         scaled_data = scaler.fit_transform(float_data)
-        corrected_float_data = pd.DataFrame(scaled_data, columns=PCA_cols)
-        pca_reduced_data = self.run_pca(
-            corrected_float_data, bTrain
-        )  # NEW X_RAW_FLOAT
 
+        X_clean_continuous = pd.DataFrame(scaled_data, columns=PCA_cols)
+        pca_reduced_data = self.run_pca(X_clean_continuous)
+
+        # Merge one hot encoded categorical features and PCA columns into dataframe
         X_clean = pd.concat([pca_reduced_data, one_hotted_data], axis=1)
 
         return X_clean
 
-    def fit(
-        self,
-        X_raw,
-        y_raw,
-        claims_raw,
-        nn_size=32,
-        epochs=100,
-        batch_size=128,
-    ):
+    def fit(self, X_raw, y_raw, claims_raw, epochs=100, batch_size=128):
         """Classifier training function.
  
         Here you will use the fit function for your classifier.
@@ -185,32 +190,29 @@ class PricingModel:
             an instance of the fitted model
  
         """
-        nnz = np.where(claims_raw != 0)[0]
-        self.y_mean = np.mean(claims_raw[nnz])  # MEAN CNST FOR SEVERITY
 
-        X_clean = self._preprocessor(X_raw, bTrain=True)
-        y_raw = pd.DataFrame.from_dict({"made_claim": y_raw})
+        # Get the mean claim
+        claim_made_idx = np.where(claims_raw != 0)[0]
+        self.mean_claim = np.mean(claims_raw[claim_made_idx])  # mean claim severity
 
-        # OUTPUTS NOT A DATAFRAME ANYMORE BUT A NUMPY ARRAY
-        features, labels = self.oversampler(
-            X_clean.values, y_raw.values
-        )
+        # Preprocess data
+        X_clean = self._preprocessor(X_raw)
 
-        # NN CONFIG
+        # Features and labels come out of oversampler as np arrays rather than dataframes
+        features, labels = self.oversampler(X_clean.values, y_raw.values)
+
+        # Neural network input and output shape
         input_shape = features.shape
         num_classes = len(np.unique(labels)) - 1
 
-
-        # MLP
+        # Non linear model
         if self.linear_model is False:
             # Input layer
             self.base_classifier.add(
                 Dense(
-                    nn_size,
+                    36,
                     input_dim=input_shape[1],
-                    kernel_constraint=maxnorm(
-                        3
-                    ),
+                    kernel_constraint=maxnorm(3),
                     kernel_initializer="glorot_uniform",
                     activation="relu",
                 )
@@ -219,10 +221,18 @@ class PricingModel:
             # Hidden layer
             self.base_classifier.add(
                 Dense(
-                    nn_size,
-                    kernel_constraint=maxnorm(
-                        3
-                    ),
+                    24,
+                    kernel_constraint=maxnorm(3),
+                    kernel_initializer="glorot_uniform",
+                    activation="relu",
+                )
+            )
+            self.base_classifier.add(Dropout(0.3))
+            # Hidden layer
+            self.base_classifier.add(
+                Dense(
+                    12,
+                    kernel_constraint=maxnorm(3),
                     kernel_initializer="glorot_uniform",
                     activation="relu",
                 )
@@ -232,15 +242,12 @@ class PricingModel:
             self.base_classifier.add(
                 Dense(
                     num_classes,
-                    kernel_constraint=maxnorm(
-                        3
-                    ),
+                    kernel_constraint=maxnorm(3),
                     kernel_initializer="glorot_uniform",
                     activation="sigmoid",
                 )
             )
-        else:
-            # DO THIS FOR A LOGISTIC REGRESSION UNIT
+        else:  # Linear model: logistic regression unit
             self.base_classifier.add(
                 Dense(
                     1,
@@ -254,7 +261,7 @@ class PricingModel:
             loss="binary_crossentropy", optimizer=Adam(lr=0.0001), metrics=["accuracy"]
         )
 
-        # THE FOLLOWING GETS CALLED IF YOU WISH TO CALIBRATE YOUR PROBABILITES
+        # Fit model to data with or without calibration
         if self.calibrate:
             self.base_classifier = fit_and_calibrate_classifier(
                 self.base_classifier, features, labels
@@ -264,7 +271,7 @@ class PricingModel:
                 features, labels, epochs=epochs, batch_size=batch_size, verbose=0
             ).model
 
-        # Save model as a pickly
+        # Save model as a pickle
         self.save_model()
 
         return self.base_classifier
@@ -286,6 +293,8 @@ class PricingModel:
             values corresponding to the probability of beloning to the
             POSITIVE class (that had accidents)
         """
+
+        # Predict claim probabilities if a model has already been generated
         try:
             X_clean = self._preprocessor(X_raw)
             predictions = self.base_classifier.predict(X_clean)
@@ -312,13 +321,17 @@ class PricingModel:
             values corresponding to the probability of beloning to the
             POSITIVE class (that had accidents)
         """
-        # REMEMBER TO INCLUDE ANY PRICING STRATEGY HERE.
+        # Pricing strategy
         if self.linear_model:
-            threshold = 8
+            phi = 0.25
         else:
-            threshold = 2.28
-            # 2.28
-        res = self.predict_claim_probability(X_raw) * self.y_mean * threshold
+            phi = 0.16
+        res = (
+            self.predict_claim_probability(X_raw) * self.mean_claim * phi
+            + self.mean_claim * 0.02
+        )
+
+        # Reshape results for testing set
         res = res.reshape(len(res))
         return res
 
@@ -327,30 +340,36 @@ class PricingModel:
 
         # Change pickle file name according to model
         if self.linear_model:
-            file_name = 'part3_pricing_model_linear.pickle'
+            file_name = "part3_pricing_model_linear.pickle"
         else:
-            file_name = 'part3_pricing_model.pickle'
+            file_name = "part3_pricing_model.pickle"
         with open(file_name, "wb") as target:
             pickle.dump(self, target)
 
-
     def evaluate_model(self, X_raw, y_raw):
-        """Architecture evaluation utility.
-            TESTING, X_raw,y_raw are evaluation datasets
-        """
-        X_clean = self._preprocessor(X_raw, bTrain=False)
+        """Evaluate model according to ROC and confusion matrix"""
+
+        # Preprocess
+        X_clean = self._preprocessor(X_raw)
+        # Fetch class predictions
         predictions = self.base_classifier.predict_classes(X_clean)
+        # Fetch probabilities of having made a claim
         predictions_proba = self.base_classifier.predict(X_clean)
+        # Generate confusion matrix
         cm = confusion_matrix(y_raw, predictions)
+        # Retrieve evaluation scores from metrics stored in model
         scores = self.base_classifier.evaluate(X_clean, y_raw)
+        # Get ROC-AUC score
         roc_auc = roc_auc_score(y_raw, predictions_proba)
 
+        # Display results
         print(f"roc_auc: {roc_auc}")
         print(f"accuracy: {scores[0]}")
         print(f"Confusion matrix \n {cm}")
         print(f"Evaluation scores {scores}\n\n")
 
         return roc_auc, scores, cm
+
 
 def fit_and_calibrate_classifier(classifier, X, y):
     # DO NOT ALTER THIS FUNCTION
@@ -364,4 +383,3 @@ def fit_and_calibrate_classifier(classifier, X, y):
         classifier, method="sigmoid", cv="prefit"
     ).fit(X_cal, y_cal)
     return calibrated_classifier
-
