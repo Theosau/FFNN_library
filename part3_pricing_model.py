@@ -22,7 +22,6 @@ import pandas as pd
  
 # VERSION ALVARO
 
-# VERSION ALVARO
 
 def fit_and_calibrate_classifier(classifier, X, y):
     # DO NOT ALTER THIS FUNCTION
@@ -138,13 +137,6 @@ class PricingModel(object):
         # OUTPUTS NOT A DATAFRAME ANYMORE BUT A NUMPY ARRAY
         features, labels, claims = self.over_sampler(X_CLEAN.values,Y_RAW.values,CLAIM.values)
  
-        # #SPLIT TEST TRAIN DATASETS
-        # X_train, X_test, y_train, y_test = train_test_split(features, labels, train_size=0.85, random_state=0)
- 
-        # # SAVE FOR EVALUATION...
-        # self.X_test = X_test
-        # self.y_test = y_test
- 
         # NN CONFIG
         input_shape = features.shape
         num_classes = 1
@@ -167,7 +159,7 @@ class PricingModel(object):
             # Compile model
         else:
             # DO THIS FOR A LOGISTIC REGRESSION UNIT
-            self.base_classifier.add(Dense(nn_size,input_dim=input_shape[1], kernel_initializer = 'glorot_uniform', activation= 'relu'))
+            self.base_classifier.add(Dense(1,input_dim=input_shape[1], kernel_initializer = 'glorot_uniform', activation= 'sigmoid'))
         self.base_classifier.compile(loss = 'binary_crossentropy', optimizer = Adam(lr=0.0001), metrics = ['accuracy'])
  
         # THE FOLLOWING GETS CALLED IF YOU WISH TO CALIBRATE YOUR PROBABILITES
@@ -293,26 +285,10 @@ class PricingModel(object):
             float_dict['PCA_{}'.format(i+1)] = reduced_data[:,i]
         pca_reduced_data = pd.DataFrame.from_dict(float_dict)
  
-        # plt.plot(range(0,n+1), [0] + list(var))
-        # plt.show()
- 
         return pca_reduced_data
  
     def onehot_complete(self,data,one_hot_strings):
-#         one_hotted_dict = {}
-#         # ONE_HOT ENCODES, TEST and TRAIN must have the same attributes...
-#         for hot in one_hot_strings:
-#             values = data[hot].values
-#             # # Value encode
-#             label_encoder = LabelEncoder()
-#             integer_encoded = label_encoder.fit_transform(values)
-#             # # binary encode
-#             onehot_encoder = OneHotEncoder(sparse=False,categories='auto')
-#             integer_encoded = integer_encoded.reshape(len(integer_encoded), 1)
-#             onehot_encoded = onehot_encoder.fit_transform(integer_encoded)
-#             for n, index in enumerate(np.unique(values)):
-#                 one_hotted_dict['{}_{}'.format(hot,index)] = onehot_encoded[:,n]
-#         one_hot_data = pd.DataFrame.from_dict(one_hotted_dict)
+
         if 'encoder' in self.__dict__:
             enc = self.encoder
         else:
