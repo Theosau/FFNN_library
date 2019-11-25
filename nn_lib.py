@@ -518,7 +518,6 @@ class Trainer(object):
 
         #Finding the number of batches based on the batch size
         n_batches = np.floor(input_dataset.shape[0]/self.batch_size).astype(int)
-        loss_arr = [] ##TO BE TAKEN OFF ONCE NOT TESTING ANYMORE
 
         for epoch in range(self.nb_epoch):
 
@@ -548,10 +547,7 @@ class Trainer(object):
                 self.multilayer_network.backward(self.grad_z)
                 self.multilayer_network.update_params(self.learning_rate)
 
-            loss_all = self.eval_loss(input_dataset, target_dataset)
-            loss_arr.append(loss_all) ##TO BE TAKEN OFF ONCE NOT TESTING ANYMORE
-
-        return loss_arr ##TO BE TAKEN OFF ONCE NOT TESTING ANYMORE
+        return
 
         #######################################################################
         #                       ** END OF YOUR CODE **
